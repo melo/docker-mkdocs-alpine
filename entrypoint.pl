@@ -27,31 +27,35 @@
 use strict;
 use warnings;
 
-my ($cmd) = @ARGV;
+my ($cmd, @rest) = @ARGV;
 
 usage() if !$cmd or $cmd eq 'help' or $cmd eq 'usage';
 exec('/bin/sh') if $cmd eq 'sh' or $cmd eq 'shell';
 
 if ($cmd eq 'serve') {
-  chdir('/docs');
-  if (! -e 'mkdocs.yml') {
-    print <<EOE;
-      FATAL: /docs doesn't look like a MkDocs directory, mkdocs.yml is missing
-      
-      To Fix: mount the correct folder in /docs using something like:
-      
-        docker run -i --rm -v <your_mkdocs_site>:/docs -p 8000:8000 melopt/mkdocs serve
+  check_sane_site();
 
-EOE
-    exit(1);
-  }
-  
-  exec('mkdocs', 'serve', '-a', '0.0.0.0:8000');
+  exec('mkdocs', 'serve', '-a', '0.0.0.0:8000', @rest);
   die "Failed to exec(mkdocs): $!";
 }
 
 die "FATAL: command '$cmd' not recognized\n";
 
+
+sub check_sane_site {
+  chdir('/docs');
+  if (! -e 'mkdocs.yml' or ! -d 'docs') {
+    print <<EOE;
+FATAL: /docs doesn't look like a MkDocs directory, mkdocs.yml or docs/ is missing
+      
+  To Fix: mount the correct folder in /docs using something like:
+      
+    docker run -i --rm -v <your_mkdocs_site>:/docs -p 8000:8000 melopt/mkdocs $cmd
+
+EOE
+    exit(1);
+  }
+}
 
 sub usage {
   seek(*DATA, 0, 0);
