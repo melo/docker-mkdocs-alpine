@@ -17,12 +17,12 @@
 # > tip: to avoid writting this docker run command every single time, create an
 # >      alias:
 # >
-# >   alias mkdocs='docker run -i --rm melopt/mkdocs' 
+# >   alias mkdocs='docker run -i --rm melopt/mkdocs'
 # >
 # > To make the explanation less verbose, all examples will make use of the
 # > `mkdocs` alias.
 #
-# If you want to explore 
+# If you want to explore
 #
 use strict;
 use warnings;
@@ -44,7 +44,7 @@ die "FATAL: command '$cmd' not recognized\n";
 
 sub check_sane_site {
   chdir('/docs');
-  if (! -e 'mkdocs.yml' or ! -d 'docs') {
+  if (!-e 'mkdocs.yml' or !-d 'docs') {
     print <<EOE;
 FATAL: /docs doesn't look like a MkDocs directory, mkdocs.yml or docs/ is missing
       
@@ -62,10 +62,10 @@ sub usage {
   while (<DATA>) {
     next if m/^#!/;
     last unless my ($l) = m{^#\s?(.*)};
-    
+
     print "$l\n";
   }
-  
+
   exit(1);
 }
 
