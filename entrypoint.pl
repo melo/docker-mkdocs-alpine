@@ -39,6 +39,13 @@ if ($cmd eq 'serve') {
   die "Failed to exec(mkdocs): $!";
 }
 
+if ($cmd eq 'build') {
+  check_sane_site();
+
+  exec('mkdocs', 'build', '--site-dir', '/build', @rest);
+  die "Failed to exec(mkdocs): $!";
+}
+
 die "FATAL: command '$cmd' not recognized\n";
 
 
