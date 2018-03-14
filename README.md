@@ -2,6 +2,14 @@
 
 Allows us to use the mkdocs command on our projects to generate documentation.
 
+## Quick Start
+
+From the command line, you can obtain an explanation on how to use with:
+
+    docker run -i --rm melopt/mkdocs
+
+This will guide you on how to use this image effectively during your documentation writing process.
+
 # Creating a Static Site
 
 At the end of this proces you'll have a very tiny nginx-based image that will launch a HTTP site
