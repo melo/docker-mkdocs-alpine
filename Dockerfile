@@ -1,9 +1,14 @@
 FROM alpine
 
 RUN apk add --no-cache               \
-      curl git                       \
+      curl wget make git             \
       python py2-pip                 \
       perl perl-path-tiny perl-yaml-tiny perl-getopt-long
+
+## Add cpanminus and install perl deps
+RUN curl -L https://cpanmin.us | perl - App::cpanminus \
+ && cpanm -q -n Pod::Markdown                          \
+ && rm -rf "$HOME/.cpanm"
 
 ## Install the mkdocs system
 RUN pip install mkdocs                                                            \
