@@ -85,7 +85,7 @@ sub extract_docs {
       ## Assume non-empty lines are SQL
       elsif (m{\S}) {
         $state = 'sql';
-        redo;    ## Yes, we want to keep this line, so lets go over the state machine once again
+        redo;                ## Yes, we want to keep this line, so lets go over the state machine once again
       }
     }
 
