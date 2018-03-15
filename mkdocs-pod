@@ -1,0 +1,201 @@
+#!/usr/bin/env perl
+#
+# Extract documentation from comments in SQL files
+#
+
+use strict;
+use warnings;
+use Data::Dumper;
+use YAML::Tiny;
+use Path::Tiny;
+use Pod::Markdown;
+use Getopt::Long;
+
+sub usage {
+  print "FATAL: @_\n" if @_;
+  die "Usage: mkdocs-pod <file>...\n";
+}
+
+
+### Main logic
+my %opts;
+GetOptions(\%opts, 'wiki=s', 'path=s') or usage();
+usage() unless @ARGV;
+get_mkdocs_config(\%opts);    ## used to validate if this is a valid wiki
+
+my @files = collect_files(@ARGV);
+
+for my $file (@files) {
+  extract_docs($file);
+}
+
+update_wiki(\%opts, @files);
+
+
+##### Utilities
+
+sub collect_files {
+  my @files;
+  for my $i (@_) {
+    my $iter = path($i)->iterator({ recurse => 1 });
+    while (my $e = $iter->()) {
+      next unless $e->is_file and $e->basename =~ m{^[^.].*\.pm$};
+
+      my ($state, $mod, $descr) = ('scanning');
+      for ($e->lines) {
+        if (m{^\s*package\s*(\S+?)[\s;]}) {
+          $mod = $1;
+          next;
+        }
+
+        ## Scan until we find the =head1 NAME marker
+        if ($state eq 'scanning' and m{^=head1 NAME$}) {
+          $state = 'found';
+          next;
+        }
+
+        ## Collect the module name and description
+        elsif ($state eq 'found') {
+          next if m{^\s*$};
+          ($descr) = m{^\s*\S+\s*-\s*(.+?)\s*$};
+          ($descr) = m{^\s*(.+?)\s*$} unless $descr;
+          last;
+        }
+      }
+      next unless $state eq 'found';
+
+      push @files, { file => $e, mod => $mod, descr => $descr };
+    }
+  }
+
+  return sort { $a->{file}->stringify cmp $b->{file}->stringify } @files;
+}
+
+
+sub extract_docs {
+  my ($file) = @_;
+
+  my $pod = $file->{file}->slurp_utf8;
+
+  my $markdown;
+  my $parser = Pod::Markdown->new;
+  $parser->output_string(\$markdown);
+  $parser->parse_string_document($pod);
+
+  $file->{markdown} = $markdown;
+}
+
+sub get_mkdocs_config {
+  my ($opts) = @_;
+
+  usage('--wiki required') unless $opts->{wiki};
+  my $root = path($opts->{wiki});
+
+  my $cfgf = $root->child('mkdocs.yml');
+  usage("directory '$opts->{wiki}' not a valid mkdocs wiki, missig mkdocs.yml")
+    unless $cfgf->is_file;
+
+  usage('--path required') unless $opts->{path};
+
+  my $path = $root->child('docs', $opts->{path});
+  usage("--path '$path' must exist") unless $path->is_dir;
+
+  my $idx_template = $path->child('index.md');
+  usage("--path '$path' lacks a index.md file") unless $idx_template->is_file;
+
+  my $cfg = Load($cfgf->slurp);
+
+  ## Search for the section that includes a entry
+  ## that matches the idx_template
+  my $section;
+  my $wanted = $idx_template->relative($root->child('docs'))->stringify;
+  my @queue  = ($cfg->{pages});
+SEARCH: while (my $try = shift @queue) {
+    next unless ref($try) eq 'ARRAY';
+    for my $entry (@$try) {
+      my ($name, $md_path) = %$entry;
+
+      if (ref($md_path) eq 'ARRAY') {
+        push @queue, $md_path;
+        next;
+      }
+      elsif ($md_path eq $wanted) {
+        $section = $try;
+      }
+      last SEARCH if $section;
+    }
+  }
+  usage("Could not find the index in the pages wiki configuration") unless $section;
+
+  return {
+    cfg_file => $cfgf,
+    cfg      => $cfg,
+    section  => $section,
+    path     => $path,
+    idx      => $idx_template,
+    base_url => $opts->{path},
+  };
+}
+
+
+sub update_wiki {
+  my $opts = shift;
+
+  my $cfg  = get_mkdocs_config($opts);
+  my $path = $cfg->{path};
+  my $sect = $cfg->{section};
+  my $base = $cfg->{base_url};
+
+  my $idx = {};
+  for my $e (@_) {
+    my $mod = $e->{mod};
+    my @c   = split(qr{::}, $mod);
+    my $bn  = pop @c;
+
+    ## Write the md file
+    my $d = $path->child(@c);
+    $d->mkpath;
+    $d->child("$bn.md")->spew_utf8($e->{markdown});
+
+    ## Update the index entry
+    my $p = $idx;
+    for my $e (@c) {
+      $p = $p->{$e} ||= {};
+    }
+    $p->{$mod} = [join('/', $base, @c, "$bn.md"), $e];
+  }
+
+  $idx = _sort_idx($idx);
+
+  my $idx_text = 'yo';
+  $cfg->{idx}->edit(
+    sub {
+      my $b = '<!-- start of pod files -->';
+      my $e = '<!-- end of pod files -->';
+      s{\Q$b\E.+?\Q$e\E}{$b\n$idx_text$e}gsm;
+    }
+  );
+
+  ## Update the Wiki index
+  push @$sect, @$idx;
+  $cfg->{cfg_file}->spew(Dump($cfg->{cfg}));
+
+  return;
+}
+
+sub _sort_idx {
+  my ($idx) = @_;
+
+  my @sorted;
+  for my $k (sort keys %$idx) {
+    my $v = $idx->{$k};
+    if (ref($v) eq 'ARRAY') {    ## final value
+      push @sorted, { $v->[1]{mod} => $v->[0] };
+    }
+    elsif (ref($v) eq 'HASH') {    ## nested...
+      push @sorted, { $k => _sort_idx($v) };
+    }
+  }
+
+  return \@sorted;
+}

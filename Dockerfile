@@ -16,9 +16,9 @@ RUN pip install mkdocs                                                          
     mkdocs-safe-text-plugin
 
 ## Copy our scripts and make sure they are executable
-COPY mkdocs-sql /usr/bin/
+COPY mkdocs-* /usr/bin/
 COPY cmds.pl /cmds
-RUN chmod 555 /cmds /usr/bin/mkdocs-sql
+RUN chmod 555 /cmds /usr/bin/mkdocs-*
 
 ## Define our Entrypoint script
 ENTRYPOINT ["/cmds"]
