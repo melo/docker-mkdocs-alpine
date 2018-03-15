@@ -211,9 +211,8 @@ sub update_wiki {
     $path->child("$name.md")->spew($e->{markdown});
 
     ## Update the index entry
-    my $url = "$base/$name.md";
-    $idx .= "* [$name]($url)\n";
-    push @$sect, { $descr => $url };
+    $idx .= "* [$name]($name.md)\n";
+    push @$sect, { $descr => "$base/$name.md" };
   }
 
   $cfg->{idx}->edit(
