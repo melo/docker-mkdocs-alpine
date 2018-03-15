@@ -72,6 +72,9 @@ sub extract_docs {
   while (defined($_ = $tok->())) {
     ## print "[$state][eof/$eof]: $_";
 
+    next if m{^--};          ## Skip single line SQL comments
+    next if m{\/\*.\*\/};    ## Skip single line block comments
+
     ## Start state: looking for the start tag of a comment block or a SQL statement
     if ($state eq 'start') {
       ## A block comment is found...
