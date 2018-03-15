@@ -217,7 +217,7 @@ sub update_wiki {
     sub {
       my $b = '<!-- start of sql files -->';
       my $e = '<!-- end of sql files -->';
-      s{\Q$b\E.+?\Q$e\E}{$b\n$idx$e};
+      s{\Q$b\E.+?\Q$e\E}{$b\n$idx$e}gsm;
     }
   );
 
