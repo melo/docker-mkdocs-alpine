@@ -6,7 +6,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use YAML::Tiny;
+use YAML::XS;
 use Path::Tiny;
 use Getopt::Long;
 

@@ -3,7 +3,7 @@ FROM alpine
 RUN apk add --no-cache               \
       curl wget make git             \
       python py2-pip                 \
-      perl perl-path-tiny perl-yaml-tiny perl-getopt-long
+      perl perl-path-tiny perl-yaml-libyaml perl-getopt-long
 
 ## Add cpanminus and install perl deps
 RUN curl -L https://cpanmin.us | perl - App::cpanminus \
