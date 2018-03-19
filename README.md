@@ -27,6 +27,57 @@ The image includes the following themes and plugins:
 
 Please note that none of the plugins are active by default, you need to activate them on your `mkdocs.yml` file.
 
+## Markdown extensions
+
+MkDocs uses the [Python Markdown package](https://python-markdown.github.io). This package includes
+a lot of [useful default extensions](https://python-markdown.github.io/extensions/) that you can
+use on your wiki.
+
+To use an extension, edit your `mkdocs.yml` file and add a `markdown_extensions` section with the list of extensions you want to add. For example:
+
+```yml
+markdown_extensions:
+  - abbr
+  - attr_list
+  - def_list
+  - footnotes
+  - codehilite
+```
+
+
+## Pygments
+
+The Pygments package is installed to provide code hi-lighting to your fenced code blocks, but this requires a bit of work on your part.
+
+You'll need to:
+
+* place a Pygments styles CSS on your site;
+* load it on your pages using the `extra_css` configuration on your `mkdocs.yml` file.
+
+#### Pygments styles CSS generation
+
+To generate the CSS file, on your Dockerfile for your site, add the following line:
+
+```dockerfile
+RUN mkdir /docs/docs/css && pygmentize -S default -f html -a .codehilite > /docs/docs/css/pygments.css
+```
+
+Tweak the locations of the destination file (make sure the destination folder exists), and adjust
+the style and class names in the `pygmentize` execution. See the
+[codehilite Markdown plugin](https://python-markdown.github.io/extensions/code_hilite/) for more
+information on the options you have.
+
+### Load the Pygments CSS file
+
+On your `mkdocs.yml` file, add a section:
+
+```yaml
+extra_css:
+  - css/pygment-styles.css
+```
+
+Make sure the path matches the file you generated on the previous section.
+
 
 # Creating a Static Site
 

@@ -15,7 +15,7 @@ RUN curl -L https://cpanmin.us | perl - App::cpanminus \
  && rm -rf "$HOME/.cpanm"
 
 ## Install the mkdocs system
-RUN pip install mkdocs                                                            \
+RUN pip install mkdocs pygments                                                   \
     mkdocs-alabaster mkdocs-bootstrap mkdocs-cinder mkdocs-material mkdocs-nature \
     mkdocs-safe-text-plugin                                                       \
  && rm -rf "$HOME/.cache"
