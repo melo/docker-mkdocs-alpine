@@ -1,0 +1,58 @@
+#!/usr/bin/env perl
+#
+# A filter that converts mermaidJS fenced blocks to HTML. Scans all folders
+# given as parameter for markdown files and edits them in-place.
+#
+# This replaces stuff like:
+#
+#      ```mermaid
+#      ...
+#      ```
+#
+# With:
+#
+#      <pre><code class="mermaid">
+#      ...
+#      </code></pre>
+#
+# And if a mermaid block is found, it will add the MermaidJS lib at the bottom,
+# and start it up.
+#
+
+use 5.022;
+use warnings;
+use Path::Tiny;
+
+sub usage {
+  print "FATAL: @_\n" if @_;
+  die "Usage: mkdocs-mermaid <dir>...\n";
+}
+
+convert_folder($_) for @ARGV;
+
+#### Utilities
+
+sub convert_folder {
+  my $folder = path(shift);
+  die "ERROR: path '$folder' is not a folder\n" unless $folder->is_dir;
+
+  my $iter = $folder->iterator({ recurse => 1 });
+  while (my $f = $iter->()) {
+    next unless $f->is_file and $f->basename =~ m/\.md$/;
+
+    $f->edit(\&replace_mermaid_fenced_block_with_html);
+  }
+}
+
+sub replace_mermaid_fenced_block_with_html {
+  return unless m/^ ``` mermaid/gsmx;
+
+  ## Awesome, I love perl regexp's... ;)
+  s{^ ``` mermaid $ (.+?) ^ ```}{<pre><code class="mermaid">$1</code></pre>}gsmx;
+
+  ## Enable the JS lib on this document
+  $_
+    .= "\n\n"
+    . qq{<script src="https://unpkg.com/mermaid\@8.0.0-rc.1/dist/mermaid.min.js"></script>\n}
+    . qq{<script>mermaid.initialize({startOnLoad:true});</script>\n};
+}
