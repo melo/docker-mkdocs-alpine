@@ -3,7 +3,11 @@ FROM alpine
 RUN apk add --no-cache               \
       curl wget make git             \
       python py2-pip                 \
+      nodejs yarn                    \
       perl perl-path-tiny perl-yaml-libyaml perl-getopt-long
+
+## Add the MermaidJS utility
+RUN yarn add mermaid
 
 ## Add cpanminus and install perl deps
 RUN curl -L https://cpanmin.us | perl - App::cpanminus \
