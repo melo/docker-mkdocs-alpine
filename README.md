@@ -102,3 +102,10 @@ COPY --from=builder /build /usr/share/nginx/docs/
 ```
 
 The final image will be a nginx-powered static site.
+
+# TODO
+
+* look at [issue 699](http://github.com/mkdocs/mkdocs/issues/699) and try to figure out how to
+    override themes to include the `_` prefix trick to hide pages from the navigation. Please note
+    that, based on the discussion, we do not expect this to be needed after mkdocs 1.0 is relased.
+    See [pages refactor project](https://github.com/mkdocs/mkdocs/projects/2) for status on this.
