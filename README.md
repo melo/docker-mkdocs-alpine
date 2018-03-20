@@ -18,6 +18,8 @@ The image includes the following themes and plugins:
 * Themes:
   * the two standard themes, `mkdocs` and `readthedocs`;
   * [`alabaster`](https://github.com/iamale/mkdocs-alabaster#alabaster-for-mkdocs);
+  * [`rtd-dropdown`](https://github.com/cjsheets/mkdocs-rtd-dropdown#readthedocs-dropdown-for-mkdocs): a
+    ReadTheDocs clone but with collapsible navigation - must have for big sites;
   * [`bootstrap`](https://mkdocs.github.io/mkdocs-bootstrap/);
   * [`cinder`](https://sourcefoundry.org/cinder/);
   * [`material`](https://squidfunk.github.io/mkdocs-material/);
