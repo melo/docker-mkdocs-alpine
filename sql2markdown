@@ -1,0 +1,187 @@
+#!/usr/bin/env perl
+#
+# Extract documentation from comments in SQL files
+#
+
+use strict;
+use warnings;
+use Path::Tiny;
+use Getopt::Long;
+
+sub usage {
+  my $ec = 1;
+  $ec = ${ shift() } if @_ and ref($_[0]) eq 'SCALAR';
+
+  die "Usage: sql2markdown --output=<dir> <file> or <dir>...\n";
+
+  print "FATAL: @_\n" if @_;
+  exit($ec);
+}
+
+
+### Main logic
+my %opts;
+GetOptions(\%opts, 'help|?', 'output=s') or usage();
+usage(\0) if $opts{help};
+usage() unless $opts{output};
+usage() unless @ARGV;
+
+my @files = collect_files(@ARGV);
+
+for my $file (@files) {
+  my $spec     = extract_docs($file);
+  my $markdown = gen_markdown($spec);
+
+  $file = { file => $file, spec => $spec, markdown => $markdown };
+}
+
+output_files(\%opts, @files);
+
+
+##### Utilities
+
+sub collect_files {
+  my @search = map { [undef, path($_)] } @_;
+
+  my @files;
+  while (@search) {
+    my $e = shift @search;
+    my ($p, $f) = @$e;
+
+    $p = $f unless $p;
+    while (!$p->is_dir) { $p = $p->parent }
+    print "... check ", $f->relative($p), " under $p\n";
+
+    if ($f->is_dir) {
+      push @search, map { [$p, $_] } $f->children;
+      next;
+    }
+
+    next unless $f->is_file and $f->basename =~ m{^[^.].*\.sql$};
+    push @files, [$p, $f];
+    print "... keep  ", $f->relative($p), " under $p\n";
+  }
+
+  return sort { $a->[1]->relative($a->[0]) cmp $b->[1]->relative($b->[0]) } @files;
+}
+
+
+sub extract_docs {
+  my ($entry) = @_;
+  my $file = $entry->[1];
+
+  open(my $fh, '<', $file) or die "Could not open file '$file', ";
+
+  my @sections;
+  my ($state, $section, $eof) = ('start', '', 0);
+  my $tok = sub {
+    my $l = <$fh>;
+    return $l if defined $l;
+    return if $eof++;
+    return "";
+  };
+
+  local $_;
+  while (defined($_ = $tok->())) {
+    ## print "[$state][eof/$eof]: $_";
+
+    next if m{^--};          ## Skip single line SQL comments
+    next if m{\/\*.\*\/};    ## Skip single line block comments
+
+    ## Start state: looking for the start tag of a comment block or a SQL statement
+    if ($state eq 'start') {
+      ## A block comment is found...
+      if (m{^\s*\/\*+\s*$}) {
+        $state = 'block';
+        next;
+      }
+      ## Assume non-empty lines are SQL
+      elsif (m{\S}) {
+        $state = 'sql';
+        redo;                ## Yes, we want to keep this line, so lets go over the state machine once again
+      }
+    }
+
+    ## Block state: collect until end of block is found
+    elsif ($state eq 'block') {
+      ## end of block reached
+      if (m{^\s*\*+\/\s*$} or $eof) {
+        push @sections, [$state, $section];
+        $section = '';
+        $state   = 'start';
+      }
+      ## Keep collecting the comment
+      else { $section .= $_ }
+    }
+
+    ## SQL State: either we collect the lines, or switch to block state
+    elsif ($state eq 'sql') {
+      ## a block comment means we are switching to a block
+      if (m{^\s*\/\*+\s*$} or $eof) {
+        push @sections, [$state, $section];
+        $section = '';
+        $state   = 'block';
+      }
+      ## Keep collecting the SQL
+      else { $section .= $_ }
+    }
+  }
+  close($fh);
+
+  return \@sections;
+}
+
+
+sub gen_markdown {
+  my $sections = shift;
+
+  my $doc = '';
+  for my $s (@$sections) {
+    my $t = $s->[1];
+    $t =~ s/^\s*|\s*$//g;
+
+    $doc .= "$t\n\n" if $s->[0] eq 'block';
+    $doc .= "\n```sql\n$t\n```\n\n" if $s->[0] eq 'sql';
+  }
+
+  return $doc;
+}
+
+
+sub output_files {
+  my ($opts, @files) = @_;
+
+  my $output = path($opts->{output});
+  $output->mkpath;
+
+  my $idx = '';
+  for my $e (@files) {
+
+    # Cleanup name
+    my $f_name = $e->{file}[1]->relative($e->{file}[0]);
+    my $c_name = $f_name;
+    $c_name =~ s/\.sql$//;
+    $c_name =~ s/^\d+\-//;
+    $c_name =~ s/\/\d+\-/\//g;
+
+    ## See if we can pick up a description
+    my ($descr) = $e->{markdown} =~ m/^#\s*(.*?)\s*#?$/gsm;
+    $descr ||= '';
+
+    ## Write the md file
+    $f_name =~ s{/}{-}g;
+    $output->child($f_name)->spew($e->{markdown});
+
+    ## Update the index entry
+    $descr = ": $descr" if $descr;
+    $idx .= "* [$c_name]($f_name)$descr\n";
+    
+    print "+++ generated $f_name for $c_name$descr\n";
+  }
+
+  $idx = "# SQL Schema\n\nList of SQL files for the project:\n\n$idx\n";
+  $output->child('index.md')->spew($idx);
+  print "+++ index.md done\n";
+
+  return;
+}
