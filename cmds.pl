@@ -46,7 +46,8 @@ if ($cmd eq 'build') {
   die "Failed to exec(mkdocs): $!";
 }
 
-die "FATAL: command '$cmd' not recognized\n";
+exec($cmd, @rest);
+die "FATAL: command '$cmd' failed to exec(): $!\n";
 
 
 sub check_sane_site {
