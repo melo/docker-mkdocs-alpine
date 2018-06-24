@@ -81,7 +81,7 @@ sub parse_wiki {
   my ($wiki) = @_;
 
   my $docs = $wiki->child('docs');
-  my %db = (root => $wiki);
+  my %db = (root => $wiki, docroot => $wiki->child('docs'));
 
   my $i = $docs->iterator({ recurse => 1 });
   while (my $f = $i->()) {
@@ -127,9 +127,10 @@ sub build_wiki {
 
   debug(\"", "Build output wiki");
 
+  my $docroot  = $output_path->child('docs');
   my $src_dest = sub {
-    my $src = $db->{root}->child('docs', $_[0]);
-    my $dest = $output_path->child('docs', $_[0]);
+    my $src  = $db->{docroot}->child($_[0]);
+    my $dest = $docroot->child($_[0]);
     $dest->parent->mkpath;
     return ($src, $dest);
   };
@@ -158,13 +159,13 @@ sub extract_meta {
 
   debug(\"", "Check file $f");
 
-  my $docs = $db->{root}->child('docs');
+  my $docs = $db->{docroot};
 
   my $mime  = $mdb->mimeTypeOf($f->basename);
   my $g_obj = {
     type      => 'file',
-    id        => $f->relative($docs)->stringify,
-    parent    => $f->parent->stringify,
+    id        => $f->relative($docs),
+    parent    => $f->parent->relative($docs),
     name      => $f->basename,
     mime_type => "$mime",
   };
@@ -348,7 +349,7 @@ sub parse_dsl {
             type        => 'action',
             action      => 'select',
             target_type => 'files',
-            where       => { path => $f->parent },
+            where       => { path => $f->parent->relative($db->{docroot}) },
             order_by    => 'basename',
             skip        => [$g_obj->{id}],
             file        => $g_obj->{id},
