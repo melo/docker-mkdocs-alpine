@@ -231,7 +231,7 @@ sub parse_dsl {
 
       if ($l =~ m/^\s*\Q$sp->{terminator}\E$/) {
         trace('found terminator');
-        $c_obj->{ $sp->{field} } = $sp->{buf};
+        $c_obj->{attrs}{ $sp->{field} } = $sp->{buf};
         pop @stack;
       }
       else {
@@ -294,7 +294,7 @@ sub parse_dsl {
 
       ## straight attr => value
       elsif ($l =~ m/^\s*\.(\w+)\s+(.+?)\s*$/) {
-        $c_obj->{ lc($1) } = $2;
+        $c_obj->{attrs}{ lc($1) } = $2;
         delete $c_obj->{buf};    ## Drop empty lines between attrs
         trace("found value '$2' for attr '$1'");
       }
