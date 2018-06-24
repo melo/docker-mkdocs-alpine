@@ -1,0 +1,7 @@
+#!/usr/bin/perl
+#
+# All around crazy stuff...
+#
+
+use strict;
+use warnings;
