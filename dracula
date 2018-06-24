@@ -480,7 +480,8 @@ sub actions_render_select {
 }
 
 
-####
+#######################################
+#### Logger
 
 sub _log {
   return unless $ENV{DEBUG};
