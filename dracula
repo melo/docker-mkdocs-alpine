@@ -57,6 +57,12 @@ sub extract_meta {
 }
 
 
+### Build phase
+sub rewrite_file {
+  my ($f, $db) = @_;
+}
+
+
 ####
 
 sub _log {
