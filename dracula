@@ -100,26 +100,15 @@ sub parse_wiki {
 
     ## Add all found objects to our DB
     for my $obj (@{ $meta->{objs} || [] }) {
-      my $type = $obj->{type};
-      my $id   = $obj->{id};
+      my $uid = $obj->{uid};
 
-      if (my $prev = $db{objs}{$type}{$id}) {
+      if (my $prev = $db{objs}{$uid}) {
         push @{ $db{notices} },
-          [
-          error => $f,
-          "object $type.$id found in $f was previously declared at $prev->{file}"
-            . (exists $prev->{line} ? ", line $prev->{line}" : "")
-          ];
+          [error => $f, "object '$uid' found in $f was previously declared at $prev->{file}, line $prev->{line}"];
         next;
       }
 
-      $db{objs}{$type}{$id} = my $last = {
-        file => $f,
-        type => $type,
-        id   => $id,
-        obj  => $obj,
-      };
-      $last->{line} = $obj->{line} if exists $obj->{line};
+      $db{objs}{$uid} = $obj;
     }
   }
 
@@ -179,6 +168,7 @@ sub extract_meta {
     name      => $f->basename,
     mime_type => "$mime",
   };
+  $g_obj->{uid} = "$g_obj->{type}.$g_obj->{id}";
   my %meta = (objs => [$g_obj]);
 
   parse_dsl($f, $db, \%meta) if $mime and $mime eq 'text/markdown';
@@ -340,10 +330,10 @@ sub parse_dsl {
 
       ## A new object is defined
       elsif ($l =~ m/^\.def\s+(\w+)\s+(.+?)\s*$/) {
-        push @$objs, my $c = { type => $1, id => $2, line => $line, file => $g_obj->{id} };
+        push @$objs, my $c = { uid => "$1.$2", type => $1, id => $2, line => $line, file => $g_obj->{id}, attrs => {} };
         push @stack, { ctx => 'obj', c => $c, line => $line };
         $keep_seq->();
-        trace("new object detected $c->{type} => $c->{id}");
+        trace("new object detected $c->{uid}");
       }
 
       ## Index action
@@ -354,6 +344,7 @@ sub parse_dsl {
           end_on_empty_line => 1,       ## first empty line ends the object...
           line              => $line,
           c                 => {
+            uid         => "action.$g_obj->{uid}.$line",
             type        => 'action',
             action      => 'select',
             target_type => 'files',
@@ -414,6 +405,7 @@ sub _get_structure_from_seq {
         }
         elsif ($type ne 'file') {                       ## other non-file objects are important for the structure
           push @struct, {                               ## Keep the reference to the object, avoids recursion later on
+            uid  => $e->{c}{uid},
             type => $type,
             id   => $e->{c}{id},
           };
