@@ -54,6 +54,240 @@ $wiki->child('db.json')->spew_raw(JSON::MaybeXS->new->convert_blessed->encode(\%
 
 sub extract_meta {
   my ($f, $db) = @_;
+
+  debug(\"", "Starting file $f");
+
+  my $mime  = $mdb->mimeTypeOf($f->basename);
+  my $g_obj = {
+    type      => 'file',
+    id        => $f->relative($docs)->stringify,
+    parent    => $f->parent->stringify,
+    name      => $f->basename,
+    mime_type => "$mime",
+  };
+  my @objs = ($g_obj);
+  my %meta = (objs => \@objs, seq => \my @seq);
+  return \%meta unless $mime and $mime eq 'text/markdown';
+
+  ## All files through here will need rewrite
+  $meta{rewrite} = 1;
+
+  ## This is our stack-based parser
+  my @stack = ({ ctx => 'global', c => $g_obj }, { ctx => 'obj', c => $g_obj });
+
+  ## Prepare for line-by-line parsing
+  my @lines = $f->lines({ chomp => 1 });
+  push @lines, \'';    ## EOF marker
+
+  ## Start the parse...
+  my $line = 0;
+  while (defined(my $l = shift @lines)) {
+
+    ## EOF handling - we allow one last loop to detect
+    my $eof = ref($l) ? 1 : 0;
+
+    ## Keep track of the top of the stack, easier access
+    $line++;
+    my $sp    = $stack[-1];
+    my $ctx   = $sp->{ctx};
+    my $c_obj = $sp->{c};
+    debug(
+      sprintf(
+        '%4d %s/%s/%s: %s',
+        $line, $ctx, $c_obj->{type},
+        (exists $c_obj->{id} ? $c_obj->{id} : '<no id>'),
+        ($eof                ? '<<EOF>>'    : $l)
+      )
+    );
+
+    ## Helpers...
+    my $keep_line = sub { push @{ $c_obj->{buf} }, [$line, $l] };
+    my $keep_seq = sub { push @seq, delete $c_obj->{buf} if exists $c_obj->{buf} };
+
+    ## Manage here-documents
+    if ($ctx eq 'here_doc') {
+      die "FATAL: file $f ended inside a here-doc (looking for $sp->{terminator})\n" if $eof;
+
+      if ($l =~ m/^\s*\Q$sp->{terminator}\E$/) {
+        trace('found terminator');
+        $c_obj->{ $sp->{field} } = $sp->{buf};
+        pop @stack;
+      }
+      else {
+        trace('just another heredoc line');
+        $sp->{buf} .= "$l\n";
+      }
+      next;
+    }
+
+    ## When inside a object, we only accept attrs and empty lines
+    ## we drop from this ctx on the first non-matching line
+    if ($ctx eq 'obj') {
+      if ($eof) {
+        trace('EOF, pushing last obj and empty lines, redoing');
+        push @seq, pop @stack;
+        $keep_seq->();    ## keep trailing WS if we have it
+        $line-- and redo; ## we need to keep the line count straight
+      }
+
+      ## explicit .end...
+      elsif ($l =~ m/^\s*\.end(:?\s+.+)$/) {
+        trace('explicit end of object');
+        push @seq, pop @stack;
+        $keep_seq->();    ## keep trailing WS if we have it
+      }
+
+      ## empty lines
+      elsif ($l =~ m/^\s*$/) {
+        if ($sp->{end_on_empty_line}) {
+          trace('end on empty line triggered, ending obj and redoing parse');
+          push @seq, pop @stack;
+          $line-- and redo; ## we need to keep the line count straight
+        }
+        else {
+          trace('keep the empty line');
+          $keep_line->();
+        }
+      }
+
+      ## named here-doc
+      elsif ($l =~ m/^\s*\.(\w+)\s+<<(\S*?)\s*$/) {
+        push @stack,
+          {
+          ctx        => 'here_doc',
+          c          => $c_obj,
+          field      => $1,
+          terminator => $2 || '.end',
+          };
+        trace("Starting heredoc for field $stack[-1]{field} (terminator $stack[-1]{terminator})");
+      }
+
+      ## straight attr => value
+      elsif ($l =~ m/^\s*\.(\w+)\s+(.+?)\s*$/) {
+        $c_obj->{ lc($1) } = $2;
+        delete $c_obj->{buf};    ## Drop empty lines between attrs
+        trace("found value '$2' for attr '$1'");
+      }
+
+      ## nothing more to parse here
+      else {
+        trace('unparsed object line, ending && redoing parse');
+        push @seq, pop @stack;
+        $keep_seq->();    ## keep trailing WS if we have it
+        $line-- and redo; ## we need to keep the line count straight
+      }
+
+      next;
+    }
+
+    ## This is the global ctx, we keep lines and look out for objects and actions
+    if ($ctx eq 'global') {
+      if ($eof) {
+        trace('file ends...');
+        $keep_seq->();
+      }
+
+      # the last .title always wins. If we don't have one, the first h1 header wins
+      elsif ($l =~ m/^.title\s+(.+)$/) {
+        $g_obj->{title} = $1;
+        trace("Set title to '$g_obj->{title}'");
+      }
+      elsif ($l =~ m/^#\s+(.+?)(:?\s+#)$/) {    ## first-level markdown header
+        $meta{title} ||= $1;
+        $keep_line->();
+        trace("Found H1, title is now '$g_obj->{title}'");
+      }
+
+      ## A new object is defined
+      elsif ($l =~ m/^\.def\s+(\w+)\s+(.+?)\s*$/) {
+        push @objs, my $c = { type => $1, id => $2, line => $line, file => $g_obj->{id} };
+        push @stack, { ctx => 'obj', c => $c };
+        $keep_seq->();
+        trace("new object detected $c->{type} => $c->{id}");
+      }
+
+      ## Index action
+      elsif ($l =~ m/^\.index$/) {
+        $keep_seq->();
+        push @stack, {
+          ctx               => 'obj',
+          end_on_empty_line => 1,       ## first empty line ends the object...
+          c                 => {
+            type        => 'action',
+            action      => 'select',
+            target_type => 'files',
+            where       => { path => $f->parent },
+            order_by    => 'basename',
+            skip        => [$g_obj->{id}],
+            file        => $g_obj->{id},
+            line        => $line,
+          }
+        };
+        trace('new index action');
+      }
+
+      ## Unparsed command
+      elsif ($l =~ m/^\./) {
+        print "WARN: unparsed command at $f line $line: $l\n";
+        $keep_line->();
+      }
+
+      ## Fallback, just keep track of things
+      else {
+        trace('keep line as is');
+        $keep_line->();
+      }
+
+      next;
+    }
+  }
+
+  my $struct = _get_structure_from_seq(\@seq);
+  $g_obj->{structures} = $struct;
+
+  return \%meta;
+}
+
+sub _get_structure_from_seq {
+  my ($seq) = @_;
+
+  ### cleanup @seq, create the document final structure
+  my @struct;
+  for my $e (@$seq) {
+    ## Text blocks, pass them through
+    if (ref($e) eq 'ARRAY') {
+      if (@struct and ref($struct[-1]) eq 'ARRAY') {    ## merge multiple sets of lines
+        push @{ $struct[-1] }, @$e;
+      }
+      else {
+        push @struct, $e;
+      }
+    }
+
+    ## We have a Stack context
+    elsif (exists $e->{ctx} and $e->{ctx}) {            ## a stack ctx, need to dig deeper
+      if ($e->{ctx} eq 'obj') {                         ## ok, some objects are important for the structure...
+        my $type = $e->{c}{type};
+        if ($type eq 'action') {                        ## we keep these intact
+          push @struct, $e->{c};
+        }
+        elsif ($type ne 'file') {                       ## other non-file objects are important for the structure
+          push @struct, {                               ## Keep the reference to the object, avoids recursion later on
+            type => $type,
+            id   => $e->{c}{id},
+          };
+        }
+      }
+      else {
+        die "FATAL: could not interpret a stack ctx of type '$e->{ctx}";
+      }
+    }
+    else {
+      die "FATAL: could not interpret a sequence element " . Dumper($e);
+    }
+  }
+
+  return \@struct;
 }
 
 
