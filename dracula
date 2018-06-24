@@ -248,6 +248,14 @@ sub parse_dsl {
         $keep_seq->();    ## keep trailing WS if we have it
       }
 
+      ## no nested objects!
+      elsif ($l =~ m/^\s*\.def\s+/) {
+        trace('another object detected, ending current one and redoing parser');
+        push @seq, pop @stack;
+        $keep_seq->();    ## keep trailing WS if we have it
+        $line-- and redo; ## we need to keep the line count straight
+      }
+
       ## empty lines
       elsif ($l =~ m/^\s*$/) {
         if ($sp->{end_on_empty_line}) {
