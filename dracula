@@ -377,7 +377,7 @@ sub parse_dsl {
   }
 
   my $struct = _get_structure_from_seq(\@seq, $f, $db);
-  $g_obj->{structures} = $struct;
+  $g_obj->{structure} = $struct;
 
   return;
 }
