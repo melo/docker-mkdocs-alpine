@@ -9,6 +9,8 @@ use Path::Tiny;
 use JSON::MaybeXS;
 use MIME::Types;
 use Getopt::Long;
+use Data::Dumper;
+
 
 #######################################
 ### Good old usage...
