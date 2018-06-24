@@ -123,7 +123,8 @@ sub build_wiki {
   my ($output_path, $db) = @_;
   return unless $output_path;
 
-  die "FATAL: skipping wiki building, errors detected\n" if $db->{notices};
+  ## Don't generate nothing if we have errors, warnings are ok
+  die "FATAL: skipping wiki building, errors detected\n" if grep { $_->[0] eq 'error' } @{ $db->{notices} };
 
   debug(\"", "Build output wiki");
 
