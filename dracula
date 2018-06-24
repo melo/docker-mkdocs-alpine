@@ -8,54 +8,152 @@ use warnings;
 use Path::Tiny;
 use JSON::MaybeXS;
 use MIME::Types;
+use Getopt::Long;
 
-my ($wiki) = map { path($_) } @ARGV;
-die "Usage: dracula <path_to_wiki>\n" unless $wiki and $wiki->is_dir;
+#######################################
+### Good old usage...
 
-my $docs = $wiki->child('docs');
-my $mdb  = MIME::Types->new;
-my %db;
+sub usage {
+  my $ec = 1;
+  $ec = ${ shift() } if ref($_[0]) eq 'SCALAR';
 
-my $i = $docs->iterator({ recurse => 1 });
-while (my $f = $i->()) {
-  next unless $f->is_file;
+  print <<EOU;
+Usage: dracula <path_to_wiki> [<build_path>]
 
-  my $meta = extract_meta($f);
+  The <path_to_wiki> must be a directory with a docs/
+  subdirectory where the files are stored.
 
-  push @{ $db{files} }, $f->relative($docs);
-  next unless $meta;
+  If <build_path> is present, it will be created, with
+  a db.json file at the root. A docs/ subfolder will
+  contain the duplicate of the <path_to_wiki> with
+  all the magic applied.
 
-  push @{ $db{need_rewrite} }, $f if $meta->{rewrite};
-  for my $obj (@{ $meta->{objs} }) {
-    my $type = $obj->{type};
-    my $id   = $obj->{id};
 
-    if (my $prev = $db{objs}{$type}{$id}) {
-      die "FATAL: object $type/$id found in $f was previously declared in $prev->{file}\n";
+Options:
+
+  --help,-?   this message
+  --debug     enable extensive debug information
+
+EOU
+
+  print "FATAL: @_\n" if @_;
+  exit($ec);
+}
+
+
+#######################################
+### Parse those options, validate those parameters
+
+my %opts;
+GetOptions(\%opts, 'help|?', 'debug') or usage();
+usage(\0) if $opts{help};
+$ENV{DEBUG} = 1 if $opts{debug};
+
+my ($wiki, $output_path) = map { path($_) } @ARGV;
+usage('requires a source directory') unless $wiki and $wiki->is_dir;
+
+
+#######################################
+### We are good to go...
+
+# Make this a gloabal, for performance/caching reasons
+our $mdb = MIME::Types->new;
+
+# Do our dance...
+my $db = parse_wiki($wiki);
+build_wiki($output_path, $db);
+exit(0);
+
+
+#######################################
+### Build phases - parsing
+
+sub parse_wiki {
+  my ($wiki) = @_;
+
+  my $docs = $wiki->child('docs');
+  my %db = (root => $wiki);
+
+  my $i = $docs->iterator({ recurse => 1 });
+  while (my $f = $i->()) {
+    next unless $f->is_file;
+
+    ## extract metadata from file
+    my $meta = extract_meta($f, \%db);
+
+    ## Keep track of all files we find, with their ID's, we have multiple files
+    my $rf = $f->relative($docs);
+    push @{ $db{files}{all} }, $rf;
+
+    if    ($meta->{skip})    { push @{ $db{files}{skipped} }, $rf }
+    elsif ($meta->{rewrite}) { push @{ $db{files}{rewrite} }, $rf }
+    else                     { push @{ $db{files}{copy} },    $rf }
+
+    ## Add all found objects to our DB
+    for my $obj (@{ $meta->{objs} || [] }) {
+      my $type = $obj->{type};
+      my $id   = $obj->{id};
+
+      if (my $prev = $db{objs}{$type}{$id}) {
+        die "FATAL: object $type/$id found in $f was previously declared in $prev->{file}"
+          . (exists $prev->{line} ? ", at $prev->{line}" : "") . "\n";
+      }
+
+      $db{objs}{$type}{$id} = my $last = {
+        file => $f,
+        type => $type,
+        id   => $id,
+        obj  => $obj,
+      };
+      $last->{line} = $obj->{line} if exists $obj->{line};
     }
-
-    $db{objs}{$type}{$id} = {
-      file => $f,
-      type => $type,
-      id   => $id,
-      obj  => $obj,
-    };
   }
+
+  return \%db;
 }
 
-for my $f (@{ $db{need_rewrite} }) {
-  rewrite_file($f, \%db);
+
+#######################################
+### Build phase
+
+sub build_wiki {
+  my ($output_path, $db) = @_;
+  return unless $output_path;
+
+  debug(\"", "Build output wiki");
+
+  my $src_dest = sub {
+    my $src = $db->{root}->child('docs', $_[0]);
+    my $dest = $output_path->child('docs', $_[0]);
+    $dest->parent->mkpath;
+    return ($src, $dest);
+  };
+
+  for my $f (@{ $db->{files}{rewrite} || [] }) {
+    my ($src, $dest) = $src_dest->($f);
+    trace("rewrite '$src' to '$dest'");
+    rewrite_file($f, $db, $src, $dest);
+  }
+
+  for my $f (@{ $db->{files}{copy} || [] }) {
+    my ($src, $dest) = $src_dest->($f);
+    trace("copy '$src' to '$dest'");
+    $src->copy($dest);
+  }
+
+  $output_path->child('db.json')->spew_raw(JSON::MaybeXS->new->convert_blessed->canonical->encode($db));
 }
 
-$wiki->child('db.json')->spew_raw(JSON::MaybeXS->new->convert_blessed->encode(\%db));
 
-
-###
+#######################################
+### Extract metadata from files
 
 sub extract_meta {
   my ($f, $db) = @_;
 
-  debug(\"", "Starting file $f");
+  debug(\"", "Check file $f");
+
+  my $docs = $db->{root}->child('docs');
 
   my $mime  = $mdb->mimeTypeOf($f->basename);
   my $g_obj = {
@@ -65,15 +163,28 @@ sub extract_meta {
     name      => $f->basename,
     mime_type => "$mime",
   };
-  my @objs = ($g_obj);
-  my %meta = (objs => \@objs, seq => \my @seq);
-  return \%meta unless $mime and $mime eq 'text/markdown';
+  my %meta = (objs => [$g_obj]);
+
+  parse_dsl($f, $db, \%meta) if $mime and $mime eq 'text/markdown';
+
+  return \%meta;
+}
+
+
+#######################################
+### Our super DSL parser
+
+sub parse_dsl {
+  my ($f, $db, $meta) = @_;
 
   ## All files through here will need rewrite
-  $meta{rewrite} = 1;
+  $meta->{rewrite} = 1;
 
   ## This is our stack-based parser
+  my $objs  = $meta->{objs};
+  my $g_obj = $objs->[0];
   my @stack = ({ ctx => 'global', c => $g_obj }, { ctx => 'obj', c => $g_obj });
+  $meta->{seq} = \my @seq;
 
   ## Prepare for line-by-line parsing
   my @lines = $f->lines({ chomp => 1 });
@@ -142,7 +253,7 @@ sub extract_meta {
         if ($sp->{end_on_empty_line}) {
           trace('end on empty line triggered, ending obj and redoing parse');
           push @seq, pop @stack;
-          $line-- and redo; ## we need to keep the line count straight
+          $line-- and redo;    ## we need to keep the line count straight
         }
         else {
           trace('keep the empty line');
@@ -173,8 +284,8 @@ sub extract_meta {
       else {
         trace('unparsed object line, ending && redoing parse');
         push @seq, pop @stack;
-        $keep_seq->();    ## keep trailing WS if we have it
-        $line-- and redo; ## we need to keep the line count straight
+        $keep_seq->();           ## keep trailing WS if we have it
+        $line-- and redo;        ## we need to keep the line count straight
       }
 
       next;
@@ -193,14 +304,14 @@ sub extract_meta {
         trace("Set title to '$g_obj->{title}'");
       }
       elsif ($l =~ m/^#\s+(.+?)(:?\s+#)$/) {    ## first-level markdown header
-        $meta{title} ||= $1;
+        $meta->{title} ||= $1;
         $keep_line->();
         trace("Found H1, title is now '$g_obj->{title}'");
       }
 
       ## A new object is defined
       elsif ($l =~ m/^\.def\s+(\w+)\s+(.+?)\s*$/) {
-        push @objs, my $c = { type => $1, id => $2, line => $line, file => $g_obj->{id} };
+        push @$objs, my $c = { type => $1, id => $2, line => $line, file => $g_obj->{id} };
         push @stack, { ctx => 'obj', c => $c };
         $keep_seq->();
         trace("new object detected $c->{type} => $c->{id}");
@@ -245,7 +356,7 @@ sub extract_meta {
   my $struct = _get_structure_from_seq(\@seq);
   $g_obj->{structures} = $struct;
 
-  return \%meta;
+  return;
 }
 
 sub _get_structure_from_seq {
@@ -291,7 +402,8 @@ sub _get_structure_from_seq {
 }
 
 
-### Build phase
+#######################################
+### Rewrite files that need rewritting
 sub rewrite_file {
   my ($f, $db) = @_;
 }
