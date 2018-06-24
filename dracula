@@ -183,7 +183,7 @@ sub parse_dsl {
   ## This is our stack-based parser
   my $objs  = $meta->{objs};
   my $g_obj = $objs->[0];
-  my @stack = ({ ctx => 'global', c => $g_obj }, { ctx => 'obj', c => $g_obj });
+  my @stack = ({ ctx => 'global', c => $g_obj }, { ctx => 'obj', c => $g_obj, end_on_empty_line => 1 });
   $meta->{seq} = \my @seq;
 
   ## Prepare for line-by-line parsing
