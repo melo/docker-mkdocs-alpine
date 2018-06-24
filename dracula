@@ -5,3 +5,36 @@
 
 use strict;
 use warnings;
+use Path::Tiny;
+use JSON::MaybeXS;
+use MIME::Types;
+
+my ($wiki) = map { path($_) } @ARGV;
+die "Usage: dracula <path_to_wiki>\n" unless $wiki and $wiki->is_dir;
+
+my $docs = $wiki->child('docs');
+my $mdb  = MIME::Types->new;
+my %db;
+
+my $i = $docs->iterator({ recurse => 1 });
+while (my $f = $i->()) {
+  next unless $f->is_file;
+}
+
+for my $f (@{ $db{need_rewrite} }) {
+  rewrite_file($f, \%db);
+}
+
+$wiki->child('db.json')->spew_raw(JSON::MaybeXS->new->convert_blessed->encode(\%db));
+
+
+####
+
+sub _log {
+  return unless $ENV{DEBUG};
+  if (ref $_[0]) { print "\n"; shift }
+  print "@_\n";
+}
+
+sub debug { _log(@_) }
+sub trace { _log('    . ', @_) }
