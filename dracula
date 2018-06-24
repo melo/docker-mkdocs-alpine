@@ -19,6 +19,28 @@ my %db;
 my $i = $docs->iterator({ recurse => 1 });
 while (my $f = $i->()) {
   next unless $f->is_file;
+
+  my $meta = extract_meta($f);
+
+  push @{ $db{files} }, $f->relative($docs);
+  next unless $meta;
+
+  push @{ $db{need_rewrite} }, $f if $meta->{rewrite};
+  for my $obj (@{ $meta->{objs} }) {
+    my $type = $obj->{type};
+    my $id   = $obj->{id};
+
+    if (my $prev = $db{objs}{$type}{$id}) {
+      die "FATAL: object $type/$id found in $f was previously declared in $prev->{file}\n";
+    }
+
+    $db{objs}{$type}{$id} = {
+      file => $f,
+      type => $type,
+      id   => $id,
+      obj  => $obj,
+    };
+  }
 }
 
 for my $f (@{ $db{need_rewrite} }) {
@@ -26,6 +48,13 @@ for my $f (@{ $db{need_rewrite} }) {
 }
 
 $wiki->child('db.json')->spew_raw(JSON::MaybeXS->new->convert_blessed->encode(\%db));
+
+
+###
+
+sub extract_meta {
+  my ($f, $db) = @_;
+}
 
 
 ####
