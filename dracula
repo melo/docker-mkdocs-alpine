@@ -95,8 +95,8 @@ sub parse_wiki {
       my $id   = $obj->{id};
 
       if (my $prev = $db{objs}{$type}{$id}) {
-        die "FATAL: object $type/$id found in $f was previously declared in $prev->{file}"
-          . (exists $prev->{line} ? ", at $prev->{line}" : "") . "\n";
+        die "FATAL: object $type.$id found in $f was previously declared at $prev->{file}"
+          . (exists $prev->{line} ? ", line $prev->{line}" : "") . "\n";
       }
 
       $db{objs}{$type}{$id} = my $last = {
