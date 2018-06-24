@@ -63,6 +63,13 @@ our $mdb = MIME::Types->new;
 
 # Do our dance...
 my $db = parse_wiki($wiki);
+
+my $ns = $db->{notices} ||= [];
+if (@$ns) {
+  print "\nNotices detected:\n";
+  print " . " . uc($_->[0]) . ": $_->[2]\n" for @$ns;
+}
+
 build_wiki($output_path, $db);
 exit(0);
 
@@ -97,8 +104,13 @@ sub parse_wiki {
       my $id   = $obj->{id};
 
       if (my $prev = $db{objs}{$type}{$id}) {
-        die "FATAL: object $type.$id found in $f was previously declared at $prev->{file}"
-          . (exists $prev->{line} ? ", line $prev->{line}" : "") . "\n";
+        push @{ $db{notices} },
+          [
+          error => $f,
+          "object $type.$id found in $f was previously declared at $prev->{file}"
+            . (exists $prev->{line} ? ", line $prev->{line}" : "")
+          ];
+        next;
       }
 
       $db{objs}{$type}{$id} = my $last = {
@@ -121,6 +133,8 @@ sub parse_wiki {
 sub build_wiki {
   my ($output_path, $db) = @_;
   return unless $output_path;
+
+  die "FATAL: skipping wiki building, errors detected\n" if $db->{notices};
 
   debug(\"", "Build output wiki");
 
@@ -219,7 +233,11 @@ sub parse_dsl {
 
     ## Manage here-documents
     if ($ctx eq 'here_doc') {
-      die "FATAL: file $f ended inside a here-doc (looking for $sp->{terminator})\n" if $eof;
+      if ($eof) {
+        push @{ $db->{notices} }, [error => $f, "file $f ended inside a here-doc (looking for $sp->{terminator})"];
+        pop @stack;
+        $line-- && redo;
+      }
 
       if ($l =~ m/^\s*\Q$sp->{terminator}\E$/) {
         trace('found terminator');
@@ -279,6 +297,7 @@ sub parse_dsl {
           c          => $c_obj,
           field      => $1,
           terminator => $2 || '.end',
+          line       => $line,
           };
         trace("Starting heredoc for field $stack[-1]{field} (terminator $stack[-1]{terminator})");
       }
@@ -322,7 +341,7 @@ sub parse_dsl {
       ## A new object is defined
       elsif ($l =~ m/^\.def\s+(\w+)\s+(.+?)\s*$/) {
         push @$objs, my $c = { type => $1, id => $2, line => $line, file => $g_obj->{id} };
-        push @stack, { ctx => 'obj', c => $c };
+        push @stack, { ctx => 'obj', c => $c, line => $line };
         $keep_seq->();
         trace("new object detected $c->{type} => $c->{id}");
       }
@@ -333,6 +352,7 @@ sub parse_dsl {
         push @stack, {
           ctx               => 'obj',
           end_on_empty_line => 1,       ## first empty line ends the object...
+          line              => $line,
           c                 => {
             type        => 'action',
             action      => 'select',
@@ -349,7 +369,7 @@ sub parse_dsl {
 
       ## Unparsed command
       elsif ($l =~ m/^\./) {
-        print "WARN: unparsed command at $f line $line: $l\n";
+        push @{ $db->{notices} }, [warn => $f, "unparsed command at $f, line $line: $l"];
         $keep_line->();
       }
 
@@ -363,14 +383,14 @@ sub parse_dsl {
     }
   }
 
-  my $struct = _get_structure_from_seq(\@seq);
+  my $struct = _get_structure_from_seq(\@seq, $f, $db);
   $g_obj->{structures} = $struct;
 
   return;
 }
 
 sub _get_structure_from_seq {
-  my ($seq) = @_;
+  my ($seq, $f, $db) = @_;
 
   ### cleanup @seq, create the document final structure
   my @struct;
@@ -400,11 +420,13 @@ sub _get_structure_from_seq {
         }
       }
       else {
-        die "FATAL: could not interpret a stack ctx of type '$e->{ctx}";
+        push @{ $db->{notices} },
+          [error => $f, "could not interpret a stack ctx of type '$e->{ctx}' at $f, line $e->{ctx}{line}"];
       }
     }
     else {
-      die "FATAL: could not interpret a sequence element " . Dumper($e);
+      push @{ $db->{notices} },
+        [error => $f, "could not interpret a sequence element " . Dumper($e) . " at $f, line $e->{ctx}{line}"];
     }
   }
 
