@@ -430,8 +430,53 @@ sub _get_structure_from_seq {
 
 #######################################
 ### Rewrite files that need rewritting
+
 sub rewrite_file {
-  my ($f, $db) = @_;
+  my ($f, $db, $src, $dest) = @_;
+
+  my $obj       = $db->{objs}{"file.$f"};
+  my $structure = $obj->{structure};
+
+  my $fh = $dest->openw_raw;
+  for my $e (@$structure) {
+    if (ref($e) eq 'ARRAY') {    ## Direct content - passthrough
+      print $fh join("\n", (map { $_->[1] } @$e), "");
+      next;
+    }
+
+    my $type = $e->{type};
+    if (my $render = main->can("render_$type")) {    ## Easy object-type-specific renders :)
+      $render->($fh, $e, $f, $db);
+    }
+    else {
+      trace("render not found for object $type");
+    }
+  }
+  $fh->close;
+}
+
+
+#######################################
+### Object renders
+
+sub render_action {
+  my ($fh, $obj, $f, $db) = @_;
+
+  my $action = $obj->{action};
+  if (my $render = main->can("actions_render_$action")) {    ## Easy action-type-specific renders :)
+    $render->(@_);
+  }
+  else {
+    trace("render not found for action $action");
+  }
+
+}
+
+sub actions_render_select {
+  my ($fh, $obj, $f, $db) = @_;
+
+  trace('render select action');
+  print $fh "# **Super Select**\n";
 }
 
 
