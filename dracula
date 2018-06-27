@@ -362,7 +362,6 @@ sub parse_dsl {
             uid         => "action.index.$g_obj->{uid}.$line",
             type        => 'action',
             action      => 'index',
-            target_type => 'files',
             where       => {
               parent    => $f->parent->relative($db->{docroot}),
               mime_type => 'text/x-markdown',
