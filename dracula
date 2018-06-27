@@ -615,6 +615,39 @@ sub _build_order_by {
 #### Template utils
 
 sub _tmpl_render {
+  my ($obj, $body) = @_;
+
+  my $txt = '';
+
+  $txt .= _tmpl_render_single($obj->{tmpl_header}, $obj) if exists $obj->{tmpl_header};
+  $txt .= "\n" if $txt;    ## Make sure there is an empty line between header and the rest
+
+  $txt .= $body;
+
+  if (exists $obj->{tmpl_footer}) {
+    $txt .= "\n" if $txt;    ## Make sure there is an empty line between rest and footer
+    $txt .= _tmpl_render_single($obj->{tmpl_footer}, $obj);
+  }
+
+  return $txt;
+}
+
+sub _tmpl_render_list {
+  my ($obj, $list, $default_tmpl) = @_;
+
+  my $txt = '';
+
+  my $tmpl = $obj->{tmpl_item} || $default_tmpl;
+  die "FATAL: render list under obj $obj->{uid} failed, no tmpl_item defined and no default" unless defined $tmpl;
+
+  for my $r (@$list) {
+    $txt .= _tmpl_render_single($tmpl, $r);
+  }
+
+  return _tmpl_render($obj, $txt);
+}
+
+sub _tmpl_render_single {
   my ($tmpl, $obj) = @_;
 
   $tmpl =~ s/
