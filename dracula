@@ -355,11 +355,14 @@ sub parse_dsl {
             type        => 'action',
             action      => 'index',
             target_type => 'files',
-            where       => { path => $f->parent->relative($db->{docroot}) },
             order_by    => 'basename',
             skip        => [$g_obj->{id}],
             file        => $g_obj->{id},
             line        => $line,
+            where       => {
+              parent    => $f->parent->relative($db->{docroot}),
+              mime_type => 'text/x-markdown',
+            },
           }
         };
         trace('new index action');
