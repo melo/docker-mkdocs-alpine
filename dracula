@@ -319,15 +319,11 @@ sub parse_dsl {
         $keep_seq->();
       }
 
-      # the last .title always wins. If we don't have one, the first h1 header wins
-      elsif ($l =~ m/^.title\s+(.+)$/) {
-        $g_obj->{title} = $1;
-        trace("Set title to '$g_obj->{title}'");
-      }
-      elsif ($l =~ m/^#\s+(.+?)(:?\s+#)$/) {    ## first-level markdown header
-        $meta->{title} ||= $1;
+      # the first h1 header will serve as attr.title
+      elsif ($l =~ m/^#\s+(.+?)(:?\s+#)$/) {
+        $g_obj->{attr}{title} ||= $1;
         $keep_line->();
-        trace("Found H1, title is now '$g_obj->{title}'");
+        trace("Found H1, title is now '$g_obj->{attr}{title}'");
       }
 
       ## A new object is defined
