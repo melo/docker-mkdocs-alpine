@@ -108,6 +108,8 @@ sub parse_wiki {
         next;
       }
 
+      $obj->{url} = "/$rf";
+
       $db{objs}{$uid} = $obj;
     }
   }
