@@ -20,7 +20,7 @@ sub usage {
   $ec = ${ shift() } if ref($_[0]) eq 'SCALAR';
 
   print <<EOU;
-Usage: dracula <path_to_wiki> [<build_path>]
+Usage: doku <path_to_wiki> [<build_path>]
 
   The <path_to_wiki> must be a directory with a docs/
   subdirectory where the files are stored.
