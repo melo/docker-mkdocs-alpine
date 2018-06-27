@@ -451,7 +451,7 @@ sub rewrite_file {
 
     my $type = $e->{type};
     if (my $render = main->can("render_$type")) {    ## Easy object-type-specific renders :)
-      $render->($fh, $e, $f, $db);
+      $render->($fh, $e, $obj, $db);
     }
     else {
       trace("render not found for object $type");
@@ -465,7 +465,7 @@ sub rewrite_file {
 ### Object renders
 
 sub render_action {
-  my ($fh, $obj, $f, $db) = @_;
+  my ($fh, $obj, $g_obj, $db) = @_;
 
   my $action = $obj->{action};
   if (my $render = main->can("actions_render_$action")) {    ## Easy action-type-specific renders :)
