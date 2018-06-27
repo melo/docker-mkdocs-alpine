@@ -142,10 +142,12 @@ sub build_wiki {
     rewrite_file($f, $db, $src, $dest);
   }
 
-  for my $f (@{ $db->{files}{copy} || [] }) {
-    my ($src, $dest) = $src_dest->($f);
-    trace("copy '$src' to '$dest'");
-    $src->copy($dest);
+  if ($output_path ne $db->{root}) {
+    for my $f (@{ $db->{files}{copy} || [] }) {
+      my ($src, $dest) = $src_dest->($f);
+      trace("copy '$src' to '$dest'");
+      $src->copy($dest);
+    }
   }
 
   $output_path->child('db.json')->spew_raw(JSON::MaybeXS->new->convert_blessed->canonical->encode($db));
