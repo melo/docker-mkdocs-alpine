@@ -624,25 +624,27 @@ sub _tmpl_render {
 
   my $txt = '';
 
-  $txt .= _tmpl_render_single($obj->{tmpl_header}, $obj) if exists $obj->{tmpl_header};
-  $txt .= "\n" if $txt;    ## Make sure there is an empty line between header and the rest
+  if (my $tmpl = _tmpl_get($obj, 'header')) {
+    $txt .= _tmpl_render_single($tmpl, $obj);
+    $txt .= "\n" if $txt;    ## Make sure there is an empty line between header and the rest
+  }
 
   $txt .= $body;
 
-  if (exists $obj->{tmpl_footer}) {
+  if (my $tmpl = _tmpl_get($obj, 'footer')) {
     $txt .= "\n" if $txt;    ## Make sure there is an empty line between rest and footer
-    $txt .= _tmpl_render_single($obj->{tmpl_footer}, $obj);
+    $txt .= _tmpl_render_single($tmpl, $obj);
   }
 
   return $txt;
 }
 
 sub _tmpl_render_list {
-  my ($obj, $list, $default_tmpl) = @_;
+  my ($obj, $list) = @_;
 
   my $txt = '';
 
-  my $tmpl = $obj->{tmpl_item} || $default_tmpl;
+  my $tmpl = _tmpl_get($obj, 'item');
   die "FATAL: render list under obj $obj->{uid} failed, no tmpl_item defined and no default" unless defined $tmpl;
 
   for my $r (@$list) {
@@ -688,6 +690,14 @@ sub _tmpl_repl {
   }
 
   return "<$expression not found>";
+}
+
+sub _tmpl_get {
+  my ($obj, $name) = @_;
+  return $obj->{attr}{"tmpl_$name"} if exists $obj->{attr}{"tmpl_$name"};
+  return $obj->{"tmpl_$name"} if exists $obj->{"tmpl_$name"};
+
+  return;
 }
 
 
