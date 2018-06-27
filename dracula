@@ -169,6 +169,7 @@ sub extract_meta {
     parent    => $f->parent->relative($docs),
     name      => $f->basename,
     mime_type => "$mime",
+    attrs     => { name => $f->basename },
   };
   $g_obj->{uid} = "$g_obj->{type}.$g_obj->{id}";
   my %meta = (objs => [$g_obj]);
@@ -328,7 +329,15 @@ sub parse_dsl {
 
       ## A new object is defined
       elsif ($l =~ m/^\.def\s+(\w+)\s+(.+?)\s*$/) {
-        push @$objs, my $c = { uid => "$1.$2", type => $1, id => $2, line => $line, file => $g_obj->{id}, attrs => {} };
+        push @$objs,
+          my $c = {
+          uid   => "$1.$2",
+          type  => $1,
+          id    => $2,
+          line  => $line,
+          file  => $g_obj->{id},
+          attrs => { name => $2 },
+          };
         push @stack, { ctx => 'obj', c => $c, line => $line };
         $keep_seq->();
         trace("new object detected $c->{uid}");
