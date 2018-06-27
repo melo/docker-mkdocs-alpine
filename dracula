@@ -355,7 +355,6 @@ sub parse_dsl {
             type        => 'action',
             action      => 'index',
             target_type => 'files',
-            order_by    => 'basename',
             skip        => [$g_obj->{id}],
             file        => $g_obj->{id},
             line        => $line,
@@ -363,6 +362,7 @@ sub parse_dsl {
               parent    => $f->parent->relative($db->{docroot}),
               mime_type => 'text/x-markdown',
             },
+            order_by => 'num attr.order=100',    ## Order by attr.order, if not found use 100
           }
         };
         trace('new index action');
