@@ -492,6 +492,55 @@ sub _field {
   return;
 }
 
+## build a order by structure.
+# TODO: in a future version this should generate a anon sub that would sort the input list like this:
+#
+#  @sorted = $anon_sub->(@unsorted_objs);
+#
+# Some ideas:
+#
+#   if   ($args) { $field = "->{args}{'$field'}" }
+#   else         { $field = "->{'$field'}" }
+#
+#   if ($def) {
+#     $field .= "|| " . ($type eq 'alpha' ? "'$def'" : "$def");
+#   }
+#
+#   my @vars = ('$a', '$b');
+#   @vars = reverse @vars if $desc eq 'desc';
+#
+#   my $sub = 'sub { sort { ';
+#   $sub .= "($vars[0]$field) " . ($type eq 'alpha' ? ' cmp ' : ' <=> ') . "($vars[1]$field)";
+#   $sub .= ' } @_ }';
+#
+#   trace("order_by for '$oby' ==> $sub");
+#   return eval $sub;
+#
+sub _build_order_by {
+  my ($obj) = @_;
+  my $oby = $obj->{order_by};
+  return unless $oby;
+
+  trace(" order by is '$oby'");
+
+  my $type = 'alpha';
+  if ($oby =~ s/^(alpha|num)\s+//) {
+    $type = $1;
+  }
+  trace("after type '$type', order by is '$oby'");
+
+  my $desc = 'asc';
+  if ($oby =~ s/^(asc|desc)\s+//) {
+    $desc = $1;
+  }
+  trace("after desc '$desc', order by is '$oby'");
+
+  my ($field, undef, $def) = $oby =~ m/^([\w\.]+)(=(.+))?$/;
+  die "FATAL: failed to parse order_by clause '$oby' at $obj->{file}, line $obj->{line}\n" unless $field;
+
+  return ($field, $def, ($desc eq 'desc'), ($type eq 'num'));
+}
+
 
 #######################################
 #### Template utils
