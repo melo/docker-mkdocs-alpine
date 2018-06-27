@@ -10,8 +10,8 @@ RUN apk add --no-cache               \
 RUN yarn add mermaid
 
 ## Add cpanminus and install perl deps
-RUN curl -L https://cpanmin.us | perl - App::cpanminus \
- && cpanm -q -n Pod::Markdown                          \
+RUN curl -L https://cpanmin.us | perl - App::cpanminus  \
+ && cpanm -q -n Pod::Markdown JSON::MaybeXS MIME::Types \
  && rm -rf "$HOME/.cpanm"
 
 ## Install the mkdocs system
