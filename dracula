@@ -465,7 +465,7 @@ sub rewrite_file {
 
 
 #######################################
-### Object renders
+### Action renders
 
 sub render_action {
   my ($fh, $obj, $g_obj, $db) = @_;
@@ -478,18 +478,6 @@ sub render_action {
     trace("render not found for action $action");
   }
 
-}
-
-## Helper to pick out a field value from an object
-sub _field {
-  my ($s, $spec, $default) = @_;
-
-  if   ($spec =~ m/^attr\.(\w+)$/) { return ($s->{attr}{$1}, 1) if exists $s->{attr}{$1} }
-  else                             { return ($s->{$spec},    1) if exists $s->{$spec} }
-
-  return ($default, -1) if defined $default;
-
-  return;
 }
 
 ## .index render
@@ -526,6 +514,21 @@ OBJ: for my $o (values %{ $db->{objs} }) {
   return;
 }
 
+
+#######################################
+### Render helpers
+
+## Helper to pick out a field value from an object
+sub _field {
+  my ($s, $spec, $default) = @_;
+
+  if   ($spec =~ m/^attr\.(\w+)$/) { return ($s->{attr}{$1}, 1) if exists $s->{attr}{$1} }
+  else                             { return ($s->{$spec},    1) if exists $s->{$spec} }
+
+  return ($default, -1) if defined $default;
+
+  return;
+}
 
 ## Do the sort_by clause
 sub _sort_results {
