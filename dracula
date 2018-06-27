@@ -493,6 +493,47 @@ sub _field {
 }
 
 
+#######################################
+#### Template utils
+
+sub _tmpl_render {
+  my ($tmpl, $obj) = @_;
+
+  $tmpl =~ s/
+    \{\{   ## initial marker for expression
+    (.+?)  ## capture everything inside
+    \}\}   ## final marker for expression
+  /
+    _tmpl_repl($obj, $1)
+  /gex;
+
+  return $tmpl;
+}
+
+sub _tmpl_repl {
+  my ($obj, $expression) = @_;
+
+  trace("expression starts as '$expression'");
+  my $default;
+  if ($expression =~ m/^\s*(.+?)\s*\|\|\s*['"](.*?)['"]\s*$/) {
+    $default    = $2;
+    $expression = $1;
+  }
+
+  trace(" after defaults parsing, expression '$expression', default "
+      . (defined($default) ? "'$default'" : '<no default>'));
+
+  my ($val, $exists) = _field($obj, $expression, $default);
+  trace(" field '$expression' for $obj->{uid}: val is " . ($exists ? "'$val'" : '<not found>'));
+
+  if ($exists) {
+    return $val if defined $val;
+    return '<$expression undefined>';
+  }
+
+  return "<$expression not found>";
+}
+
 
 #######################################
 #### Logger
