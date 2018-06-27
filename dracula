@@ -351,9 +351,9 @@ sub parse_dsl {
           end_on_empty_line => 1,       ## first empty line ends the object...
           line              => $line,
           c                 => {
-            uid         => "action.$g_obj->{uid}.$line",
+            uid         => "action.index.$g_obj->{uid}.$line",
             type        => 'action',
-            action      => 'select',
+            action      => 'index',
             target_type => 'files',
             where       => { path => $f->parent->relative($db->{docroot}) },
             order_by    => 'basename',
