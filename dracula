@@ -234,6 +234,12 @@ sub parse_dsl {
         $line-- && redo;
       }
 
+      if ($l =~ m/^(\.\w+)/) {
+        push @{ $db->{notices} },
+          [warn => $f, "Found '$1' inside here doc, did you miss terminator '$sp->{terminator}' at $f line $line?"];
+        trace('found dot-attr inside here-doc, possible missing terminator');
+      }
+
       if ($l =~ m/^\s*\Q$sp->{terminator}\E$/) {
         trace('found terminator');
         $c_obj->{attr}{ $sp->{field} } = $sp->{buf};
