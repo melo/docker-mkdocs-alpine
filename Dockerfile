@@ -22,8 +22,8 @@ RUN pip install mkdocs pygments                                                 
  && rm -rf "$HOME/.cache"
 
 ## Copy our scripts and make sure they are executable
-COPY mkdocs-* *2markdown /usr/local/bin/
-COPY cmds.pl /cmds
+COPY cmds/ /usr/local/bin/
+COPY cmds/cmds.pl /cmds
 RUN chmod 555 /cmds /usr/local/bin/*
 
 ## Define our Entrypoint script
