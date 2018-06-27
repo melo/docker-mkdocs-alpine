@@ -108,8 +108,6 @@ sub parse_wiki {
         next;
       }
 
-      $obj->{url} = "/$rf";
-
       $db{objs}{$uid} = $obj;
     }
   }
@@ -164,12 +162,15 @@ sub extract_meta {
 
   my $docs = $db->{docroot};
 
+  my $rf    = $f->relative($docs);
   my $mime  = $mdb->mimeTypeOf($f->basename);
   my $g_obj = {
     type      => 'file',
-    id        => $f->relative($docs),
+    id        => $rf,
     parent    => $f->parent->relative($docs),
     name      => $f->basename,
+    path      => $rf,
+    url       => "/$rf",
     mime_type => "$mime",
     attr      => { name => $f->basename },
   };
