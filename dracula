@@ -672,8 +672,10 @@ sub _tmpl_repl {
   my ($obj, $expression) = @_;
 
   trace("expression starts as '$expression'");
+  $expression =~ s/^\s+|\s+$//g;
+  
   my $default;
-  if ($expression =~ m/^\s*(.+?)\s*\|\|\s*['"](.*?)['"]\s*$/) {
+  if ($expression =~ m/^(.+?)\s*\|\|\s*['"](.*?)['"]$/) {
     $default    = $2;
     $expression = $1;
   }
