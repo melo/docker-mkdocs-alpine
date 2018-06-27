@@ -362,6 +362,7 @@ sub parse_dsl {
             uid         => "action.index.$g_obj->{uid}.$line",
             type        => 'action',
             action      => 'index',
+            tmpl_item   => "* [{{attr.name}}]({{name}}): {{attr.title || ''}}\n",
             where       => {
               parent    => $f->parent->relative($db->{docroot}),
               mime_type => 'text/x-markdown',
@@ -516,7 +517,7 @@ OBJ: for my $o (values %{ $db->{objs} }) {
 
   my $sorted = _sort_results($obj, \@results);
 
-  print $fh _tmpl_render_list($obj, $sorted, "* [{{attr.name}}]({{name}}): {{attr.title || ''}}\n");
+  print $fh _tmpl_render_list($obj, $sorted);
 
   return;
 }
