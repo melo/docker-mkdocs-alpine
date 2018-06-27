@@ -480,6 +480,18 @@ sub render_action {
 
 }
 
+## Helper to pick out a field value from an object
+sub _field {
+  my ($s, $spec, $default) = @_;
+
+  if   ($spec =~ m/^attr\.(\w+)$/) { return ($s->{attr}{$1}, 1) if exists $s->{attr}{$1} }
+  else                             { return ($s->{$spec},    1) if exists $s->{$spec} }
+
+  return ($default, -1) if defined $default;
+
+  return;
+}
+
 
 
 #######################################
