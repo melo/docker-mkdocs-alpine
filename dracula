@@ -498,8 +498,6 @@ sub actions_render_index {
 
   trace('render index action');
 
-  my ($of, $of_def, $ob_is_desc, $ob_is_num) = _build_order_by($obj);
-
   ## Normalize some fields
   my $skip_lst = $obj->{skip};
   $skip_lst = []          unless $skip_lst;
@@ -518,46 +516,50 @@ OBJ: for my $o (values %{ $db->{objs} }) {
       }
     }
 
-    ## We precalculate the order_by field...
-    my $of_val;
-    ($of_val) = _field($o, $of, $of_def) if $of;
-
-    push @results, [$of_val, $o];
+    push @results, $o;
   }
 
-  ## Do the order_by thing
-  if ($of) {
-    if ($ob_is_desc) {
-      if ($ob_is_num) {
-        @results = sort { $b->[0] <=> $a->[0] } @results;
-      }
-      else {
-        @results = sort { $b->[0] cmp $a->[0] } @results;
-      }
-    }
-    else {
-      if ($ob_is_num) {
-        @results = sort { $a->[0] <=> $b->[0] } @results;
-      }
-      else {
-        @results = sort { $a->[0] cmp $b->[0] } @results;
-      }
-    }
-  }
-
-  @results = map { $_->[1] } @results;
+  my $sorted = _sort_results($obj, \@results);
 
   ## And now render it...
   my $tmpl = $obj->{tmpl_item} || "* [{{attr.name}}]({{name}}): {{attr.title || ''}}\n";
   my $txt = '';
 
-  for my $r (@results) {
+  for my $r (@$sorted) {
     $txt .= _tmpl_render($tmpl, $r);
   }
 
   print $fh $txt;
 }
 
+
+## Do the sort_by clause
+sub _sort_results {
+  my ($obj, $results) = @_;
+  my ($field, $default, $is_desc, $is_num) = _build_order_by($obj);
+  return $results unless $field;
+
+  my @sorted = map { [(_field($_, $field, $default))[0], $_] } @$results;
+
+  if ($is_desc) {
+    if ($is_num) {
+      @sorted = sort { $b->[0] <=> $a->[0] } @sorted;
+    }
+    else {
+      @sorted = sort { $b->[0] cmp $a->[0] } @sorted;
+    }
+  }
+  else {
+    if ($is_num) {
+      @sorted = sort { $a->[0] <=> $b->[0] } @sorted;
+    }
+    else {
+      @sorted = sort { $a->[0] cmp $b->[0] } @sorted;
+    }
+  }
+
+  return [map { $_->[1] } @sorted];
+}
 
 ## build a order by structure.
 # TODO: in a future version this should generate a anon sub that would sort the input list like this:
