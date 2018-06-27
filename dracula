@@ -376,6 +376,24 @@ sub parse_dsl {
         trace('new index action');
       }
 
+      ## Sequence action
+      elsif ($l =~ m/^\.select$/) {
+        $keep_seq->();
+        push @stack, {
+          ctx               => 'obj',
+          end_on_empty_line => 1,       ## first empty line ends the object...
+          line              => $line,
+          c                 => {
+            uid    => "action.select.$g_obj->{uid}.$line",
+            type   => 'action',
+            action => 'select',
+            file   => $g_obj->{id},
+            line   => $line,
+          }
+        };
+        trace('new select action');
+      }
+
       ## Unparsed command
       elsif ($l =~ m/^\./) {
         push @{ $db->{notices} }, [warn => $f, "unparsed command at $f, line $line: $l"];
@@ -517,6 +535,52 @@ OBJ: for my $o (values %{ $db->{objs} }) {
 
   my $sorted = _sort_results($obj, \@results);
 
+  print $fh _tmpl_render_list($obj, $sorted);
+
+  return;
+}
+
+## .select render
+sub actions_render_select {
+  my ($fh, $obj, $g_obj, $db) = @_;
+
+  trace('render select action');
+
+  ## Normalize some fields
+  my $skip_lst = $obj->{skip};
+  $skip_lst = []          unless $skip_lst;
+  $skip_lst = [$skip_lst] unless ref($skip_lst) eq 'ARRAY';
+
+  ## Select objects that match our criteria
+  my $type_filter = $obj->{target} || '*';
+  my @results;
+OBJ: for my $o (values %{ $db->{objs} }) {
+    trace("  check if object $o->{uid} for type '$type_filter'");
+  
+    next unless $type_filter eq '*' or $o->{type} eq $type_filter;
+    trace("          matches type filter '$type_filter'");
+    
+    next if @$skip_lst and grep { $_ eq $o->{uid} } @$skip_lst;
+    trace("          not on skip list");
+
+    if (my $w = $obj->{where}) {
+      for my $k (keys %$w) {
+        my ($kv, $exists) = _field($o, $k);
+        trace("          object $o->{uid} check where filter '$k' => $w->{$k}");
+        next OBJ unless $exists and defined($kv) and $kv eq $w->{$k};
+        trace("              matches where filter '$k' => $w->{$k}");
+      }
+    }
+
+    trace("      all filters passed, object $o->{uid} in the result set");
+
+    push @results, $o;
+  }
+
+  trace('  sorting results, count is '. @results);
+  my $sorted = _sort_results($obj, \@results);
+
+  trace('  rendering list');
   print $fh _tmpl_render_list($obj, $sorted);
 
   return;
