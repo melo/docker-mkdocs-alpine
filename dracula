@@ -492,6 +492,73 @@ sub _field {
   return;
 }
 
+## .index render
+sub actions_render_index {
+  my ($fh, $obj, $g_obj, $db) = @_;
+
+  trace('render index action');
+
+  my ($of, $of_def, $ob_is_desc, $ob_is_num) = _build_order_by($obj);
+
+  ## Normalize some fields
+  my $skip_lst = $obj->{skip};
+  $skip_lst = []          unless $skip_lst;
+  $skip_lst = [$skip_lst] unless ref($skip_lst) eq 'ARRAY';
+
+  ## Select objects that match our criteria
+  my @results;
+OBJ: for my $o (values %{ $db->{objs} }) {
+    next if $o->{type} ne 'file';
+    next if @$skip_lst and grep { $_ eq $o->{uid} } @$skip_lst;
+
+    if (my $w = $obj->{where}) {
+      for my $k (keys %$w) {
+        my ($kv, $exists) = _field($o, $k);
+        next OBJ unless $exists and defined($kv) and $kv eq $w->{$k};
+      }
+    }
+
+    ## We precalculate the order_by field...
+    my $of_val;
+    ($of_val) = _field($o, $of, $of_def) if $of;
+
+    push @results, [$of_val, $o];
+  }
+
+  ## Do the order_by thing
+  if ($of) {
+    if ($ob_is_desc) {
+      if ($ob_is_num) {
+        @results = sort { $b->[0] <=> $a->[0] } @results;
+      }
+      else {
+        @results = sort { $b->[0] cmp $a->[0] } @results;
+      }
+    }
+    else {
+      if ($ob_is_num) {
+        @results = sort { $a->[0] <=> $b->[0] } @results;
+      }
+      else {
+        @results = sort { $a->[0] cmp $b->[0] } @results;
+      }
+    }
+  }
+
+  @results = map { $_->[1] } @results;
+
+  ## And now render it...
+  my $tmpl = $obj->{tmpl_item} || "* [{{attr.name}}]({{name}}): {{attr.title || ''}}\n";
+  my $txt = '';
+
+  for my $r (@results) {
+    $txt .= _tmpl_render($tmpl, $r);
+  }
+
+  print $fh $txt;
+}
+
+
 ## build a order by structure.
 # TODO: in a future version this should generate a anon sub that would sort the input list like this:
 #
