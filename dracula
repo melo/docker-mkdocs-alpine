@@ -477,12 +477,6 @@ sub render_action {
 
 }
 
-sub actions_render_select {
-  my ($fh, $obj, $f, $db) = @_;
-
-  trace('render select action');
-  print $fh "# **Super Select**\n";
-}
 
 
 #######################################
