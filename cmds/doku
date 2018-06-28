@@ -373,15 +373,15 @@ sub parse_dsl {
         $keep_seq->();
         push @stack, {
           ctx               => 'obj',
-          end_on_empty_line => 1,       ## first empty line ends the object...
+          end_on_empty_line => 1,                  ## first empty line ends the object...
           line              => $line,
           wrap_cb           => \&wrap_index_obj,
           c                 => {
-            uid         => "action.index.$g_obj->{uid}.$line",
-            type        => 'action',
-            action      => 'index',
-            tmpl_item   => "* [{{attr.name}}]({{name}}): {{attr.title || ''}}\n",
-            where       => {
+            uid       => "action.index.$g_obj->{uid}.$line",
+            type      => 'action',
+            action    => 'index',
+            tmpl_item => "* [{{attr.name}}]({{name}}): {{attr.title || ''}}\n",
+            where     => {
               parent    => $f->parent->relative($db->{docroot}),
               mime_type => 'text/x-markdown',
             },
@@ -399,7 +399,7 @@ sub parse_dsl {
         $keep_seq->();
         push @stack, {
           ctx               => 'obj',
-          end_on_empty_line => 1,       ## first empty line ends the object...
+          end_on_empty_line => 1,                   ## first empty line ends the object...
           line              => $line,
           wrap_cb           => \&wrap_select_obj,
           c                 => {
@@ -607,13 +607,14 @@ sub _select_style_render {
 
   ## Select objects that match our criteria
   my $type_filter = $obj->{target} || '*';
+
   my @results;
 OBJ: for my $o (values %{ $db->{objs} }) {
     trace("  check if object $o->{uid} for type '$type_filter'");
-  
+
     next unless $type_filter eq '*' or $o->{type} eq $type_filter;
     trace("          matches type filter '$type_filter'");
-    
+
     next if @$skip_lst and grep { $_ eq $o->{uid} } @$skip_lst;
     trace("          not on skip list");
 
@@ -636,7 +637,7 @@ OBJ: for my $o (values %{ $db->{objs} }) {
     push @results, $o;
   }
 
-  trace('  sorting results, count is '. @results);
+  trace('  sorting results, count is ' . @results);
   my $sorted = _sort_results($obj, \@results);
 
   trace('  rendering list');
@@ -796,7 +797,7 @@ sub _tmpl_repl {
 
   trace("expression starts as '$expression'");
   $expression =~ s/^\s+|\s+$//g;
-  
+
   my $default;
   if ($expression =~ m/^(.+?)\s*\|\|\s*['"](.*?)['"]$/) {
     $default    = $2;
