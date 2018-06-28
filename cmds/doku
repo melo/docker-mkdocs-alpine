@@ -490,22 +490,23 @@ sub rewrite_file {
   my $obj       = $db->{objs}{"file.$f"};
   my $structure = $obj->{structure};
 
-  my $fh = $dest->openw_raw;
+  my $cnt = '';
   for my $e (@$structure) {
     if (ref($e) eq 'ARRAY') {    ## Direct content - passthrough
-      print $fh join("\n", (map { $_->[1] } @$e), "");
+      $cnt .= join("\n", (map { $_->[1] } @$e), "");
       next;
     }
 
     my $type = $e->{type};
     if (my $render = main->can("render_$type")) {    ## Easy object-type-specific renders :)
-      $render->($fh, $e, $obj, $db);
+      $cnt .= $render->($e, $obj, $db);
     }
     else {
       trace("render not found for object $type");
     }
   }
-  $fh->close;
+
+  $dest->spew_raw($cnt);
 }
 
 
@@ -574,16 +575,19 @@ sub wrap_select_obj {
 ### Action renders
 
 sub render_action {
-  my ($fh, $obj, $g_obj, $db) = @_;
+  my ($obj, $g_obj, $db) = @_;
+
+  my $cnt = '';
 
   my $action = $obj->{action};
   if (my $render = main->can("actions_render_$action")) {    ## Easy action-type-specific renders :)
-    $render->(@_);
+    $cnt = $render->(@_);
   }
   else {
     trace("render not found for action $action");
   }
 
+  return $cnt;
 }
 
 sub actions_render_index {
@@ -641,9 +645,7 @@ OBJ: for my $o (values %{ $db->{objs} }) {
   my $sorted = _sort_results($obj, \@results);
 
   trace('  rendering list');
-  print $fh _tmpl_render_list($obj, $sorted);
-
-  return;
+  return _tmpl_render_list($obj, $sorted);
 }
 
 
