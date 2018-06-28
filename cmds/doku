@@ -228,12 +228,19 @@ sub parse_dsl {
     ## Helpers...
     my $keep_line = sub { push @{ $c_obj->{buf} }, [$line, $l] };
     my $keep_seq = sub { push @seq, delete $c_obj->{buf} if exists $c_obj->{buf} };
+    my $pop_stack = sub {
+      my $old_sp = pop @stack;
+      if (my $cb = $old_sp->{wrap_cb}) {
+        $cb->($old_sp->{c}, $g_obj, $f, $old_sp->{line});
+      }
+      return $old_sp;
+    };
 
     ## Manage here-documents
     if ($ctx eq 'here_doc') {
       if ($eof) {
         push @{ $db->{notices} }, [error => $f, "file $f ended inside a here-doc (looking for $sp->{terminator})"];
-        pop @stack;
+        $pop_stack->();
         $line-- && redo;
       }
 
@@ -246,7 +253,7 @@ sub parse_dsl {
       if ($l =~ m/^\s*\Q$sp->{terminator}\E$/) {
         trace('found terminator');
         $c_obj->{attr}{ $sp->{field} } = $sp->{buf};
-        pop @stack;
+        $pop_stack->();
       }
       else {
         trace('just another heredoc line');
@@ -260,7 +267,7 @@ sub parse_dsl {
     if ($ctx eq 'obj') {
       if ($eof) {
         trace('EOF, pushing last obj and empty lines, redoing');
-        push @seq, pop @stack;
+        push @seq, $pop_stack->();
         $keep_seq->();    ## keep trailing WS if we have it
         $line-- and redo; ## we need to keep the line count straight
       }
@@ -268,14 +275,14 @@ sub parse_dsl {
       ## explicit .end...
       elsif ($l =~ m/^\s*\.end(:?\s+.+)$/) {
         trace('explicit end of object');
-        push @seq, pop @stack;
+        push @seq, $pop_stack->();
         $keep_seq->();    ## keep trailing WS if we have it
       }
 
       ## no nested objects!
       elsif ($l =~ m/^\s*\.def\s+/) {
         trace('another object detected, ending current one and redoing parser');
-        push @seq, pop @stack;
+        push @seq, $pop_stack->();
         $keep_seq->();    ## keep trailing WS if we have it
         $line-- and redo; ## we need to keep the line count straight
       }
@@ -284,7 +291,7 @@ sub parse_dsl {
       elsif ($l =~ m/^\s*$/) {
         if ($sp->{end_on_empty_line}) {
           trace('end on empty line triggered, ending obj and redoing parse');
-          push @seq, pop @stack;
+          push @seq, $pop_stack->();
           $line-- and redo;    ## we need to keep the line count straight
         }
         else {
@@ -316,7 +323,7 @@ sub parse_dsl {
       ## nothing more to parse here
       else {
         trace('unparsed object line, ending && redoing parse');
-        push @seq, pop @stack;
+        push @seq, $pop_stack->();
         $keep_seq->();           ## keep trailing WS if we have it
         $line-- and redo;        ## we need to keep the line count straight
       }
