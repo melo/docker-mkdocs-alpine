@@ -572,6 +572,11 @@ sub wrap_select_obj {
   ## Select all object types by default
   $obj->{target} = exists $obj->{attr}{target} ? $obj->{attr}{target} : '*';
 
+  ## Some "where" shortcuts
+  if (_field($obj, 'attr.only_documents')) {
+    $obj->{where}{mime_type} = 'text/x-markdown';
+  }
+
   return;
 }
 
