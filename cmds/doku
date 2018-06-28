@@ -602,15 +602,11 @@ sub actions_render_select {
 }
 
 sub _select_style_render {
-  my ($fh, $obj, $g_obj, $db) = @_;
+  my ($obj, $g_obj, $db) = @_;
 
-  ## Normalize some fields
-  my $skip_lst = $obj->{skip};
-  $skip_lst = []          unless $skip_lst;
-  $skip_lst = [$skip_lst] unless ref($skip_lst) eq 'ARRAY';
-
-  ## Select objects that match our criteria
-  my $type_filter = $obj->{target} || '*';
+  ## Prepare our filters
+  my $type_filter = $obj->{target};
+  my $skip_lst    = $obj->{skip};
 
   my @results;
 OBJ: for my $o (values %{ $db->{objs} }) {
