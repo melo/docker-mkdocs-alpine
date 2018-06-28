@@ -507,7 +507,9 @@ sub rewrite_file {
   }
 
   ## gloabal cleanups
-  $cnt =~ s/^\s+#/#/sm;                             ## remove all space/lines before first markdown header
+  $cnt =~ s/^\s+#/#/sm;                              ## remove all space/lines before first markdown header
+  $cnt = _tmpl_render_single($cnt, $obj);            ## one final pass to remove global markers
+  $cnt = _tmpl_unescape_expressions($cnt);           ## cleanup all escaped expression markers
 
   $dest->spew_raw($cnt);
 }
@@ -791,6 +793,20 @@ sub _tmpl_render_single {
   /gex;
 
   return $tmpl;
+}
+
+sub _tmpl_unescape_expressions {
+  my ($cnt) = @_;
+
+  $cnt =~ s/
+    \\\{\\\{
+    (
+      (.+?)
+    )
+    \\\}\\\}
+  /{{$1}}/gx;
+
+  return $cnt;
 }
 
 sub _tmpl_repl {
