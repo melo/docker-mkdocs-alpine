@@ -375,6 +375,7 @@ sub parse_dsl {
           ctx               => 'obj',
           end_on_empty_line => 1,       ## first empty line ends the object...
           line              => $line,
+          wrap_cb           => \&wrap_index_obj,
           c                 => {
             uid         => "action.index.$g_obj->{uid}.$line",
             type        => 'action',
@@ -400,6 +401,7 @@ sub parse_dsl {
           ctx               => 'obj',
           end_on_empty_line => 1,       ## first empty line ends the object...
           line              => $line,
+          wrap_cb           => \&wrap_select_obj,
           c                 => {
             uid    => "action.select.$g_obj->{uid}.$line",
             type   => 'action',
@@ -508,6 +510,67 @@ sub rewrite_file {
 
 
 #######################################
+### Action wrappers
+###
+### cleanup/tidy the object, the parser calls them to close the object
+
+## action index wrapper
+sub wrap_index_obj {
+  my ($obj) = @_;
+
+  trace(" wrapping index obj $obj->{uid}");
+
+  ## .index can use select wrappers too
+  wrap_select_obj(@_);
+
+  # .index targets only files
+  $obj->{target} = 'file';
+
+  ## Take care of .index special attrs
+  my ($path) = _field($obj, 'attr.path');
+  if ($path) {
+    if ($path =~ m{^/(.+)}) { $obj->{where}{parent} = $1 }
+    else {
+      my $p = $obj->{where}{parent};
+      $obj->{where}{parent} = $p eq '.' ? $path : "$p/$path";
+    }
+  }
+
+  my ($incl_folders) = _field($obj, 'attr.only_folders');
+  if ($incl_folders) {
+    my $p = delete $obj->{where}{parent};
+
+    my $re = '^';
+    $re .= "$p/" unless $p eq '.';    ## special case: parent at root of the site is '.'
+    $re .= '[^/]+/index.md$';
+
+    $obj->{where}{path} = qr{$re};
+    delete $obj->{where}{parent};
+  }
+
+  return;
+}
+
+## action select wrapper
+sub wrap_select_obj {
+  my ($obj) = @_;
+
+  trace(" wrapping select obj $obj->{uid}");
+
+  ## Normalize some fields
+  my $skip_lst = $obj->{skip};
+  $skip_lst = []          unless $skip_lst;
+  $skip_lst = [$skip_lst] unless ref($skip_lst) eq 'ARRAY';
+  $obj->{skip} = $skip_lst;
+
+  ## Select all object types by default
+  $obj->{target} = exists $obj->{attr}{target} ? $obj->{attr}{target} : '*';
+
+  return;
+}
+
+
+#######################################
 ### Action renders
 
 sub render_action {
@@ -523,45 +586,19 @@ sub render_action {
 
 }
 
-## .index render
 sub actions_render_index {
-  my ($fh, $obj, $g_obj, $db) = @_;
-
   trace('render index action');
-
-  ## Normalize some fields
-  my $skip_lst = $obj->{skip};
-  $skip_lst = []          unless $skip_lst;
-  $skip_lst = [$skip_lst] unless ref($skip_lst) eq 'ARRAY';
-
-  ## Select objects that match our criteria
-  my @results;
-OBJ: for my $o (values %{ $db->{objs} }) {
-    next if $o->{type} ne 'file';
-    next if @$skip_lst and grep { $_ eq $o->{uid} } @$skip_lst;
-
-    if (my $w = $obj->{where}) {
-      for my $k (keys %$w) {
-        my ($kv, $exists) = _field($o, $k);
-        next OBJ unless $exists and defined($kv) and $kv eq $w->{$k};
-      }
-    }
-
-    push @results, $o;
-  }
-
-  my $sorted = _sort_results($obj, \@results);
-
-  print $fh _tmpl_render_list($obj, $sorted);
-
-  return;
+  return _select_style_render(@_);
 }
 
 ## .select render
 sub actions_render_select {
-  my ($fh, $obj, $g_obj, $db) = @_;
-
   trace('render select action');
+  return _select_style_render(@_);
+}
+
+sub _select_style_render {
+  my ($fh, $obj, $g_obj, $db) = @_;
 
   ## Normalize some fields
   my $skip_lst = $obj->{skip};
@@ -583,9 +620,14 @@ OBJ: for my $o (values %{ $db->{objs} }) {
     if (my $w = $obj->{where}) {
       for my $k (keys %$w) {
         my ($kv, $exists) = _field($o, $k);
-        trace("          object $o->{uid} check where filter '$k' => $w->{$k}");
-        next OBJ unless $exists and defined($kv) and $kv eq $w->{$k};
-        trace("              matches where filter '$k' => $w->{$k}");
+        next OBJ unless $exists and defined $kv;
+
+        my $v = $w->{$k};
+        trace("              check where filter '$k' => $w->{$k} against '$v'");
+
+        if   (ref($v) eq 'Regexp') { next OBJ unless $kv =~ m/$v/ }
+        else                       { next OBJ unless $kv eq $v }
+        trace("              matched!");
       }
     }
 
