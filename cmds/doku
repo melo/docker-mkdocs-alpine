@@ -506,6 +506,9 @@ sub rewrite_file {
     }
   }
 
+  ## gloabal cleanups
+  $cnt =~ s/^\s+#/#/sm;                             ## remove all space/lines before first markdown header
+
   $dest->spew_raw($cnt);
 }
 
