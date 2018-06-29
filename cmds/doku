@@ -578,8 +578,8 @@ sub wrap_select_obj {
     $obj->{where}{mime_type} = 'text/x-markdown';
   }
 
-  ## Promote some of the attrs to main flags
-  if (my ($order_by, $exits) = _field($obj, 'attr.order_by')) {
+  ## Promote custom order_by
+  if (my ($order_by) = _field($obj, 'attr.order_by')) {
     $obj->{order_by} = $order_by;
   }
 
