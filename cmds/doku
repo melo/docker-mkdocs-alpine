@@ -904,9 +904,101 @@ sub _query_parser {
   return { ok => 1, tree => $tree[0] };
 }
 
+## Match long where conditions
+sub query_match {
+  my ($where, $obj, @rest) = @_;
+
+  CORE::state $query_cache = {};
+
+  trace(" match '$obj->{uid}' against '$where'");
+
+  if (!exists $query_cache->{$where}) {
+    my $r = _query_parser($where);
+
+    die "FATAL: failed to parse 'where' condition '$where' at $obj->{file}, line $obj->{line}: $r->{error}"
+      . ($r->{ctx} ? " (stopped at '$r->{ctx}')" : '') . "\n"
+      unless $r->{ok};
+
+    $query_cache->{$where} = $r->{tree};
+    trace("   cached tree for '$where'");
+  }
+
+  return _query_eval_expression($query_cache->{$where}, $obj, @rest);
+}
+
+sub _query_eval_expression {
+  my ($e, @ctx)  = @_;
+  my ($o, $page) = @ctx;
+
+  ## sequence of: expression [logical_op expression]*
+  if (exists $e->{exp}) {
+    my @terms = @{ $e->{exp} };
+    my $r = _query_eval_expression(shift(@terms), @ctx);
+    while (@terms) {
+      my $op  = shift @terms;
+      my $rhs = shift @terms;
+      if ($op eq 'and') {
+        $r = _query_eval_expression($rhs, @ctx) if $r;    ## short circuit if false
+      }
+      elsif ($op eq 'or') {
+        $r = _query_eval_expression($rhs, @ctx) unless $r;    ## short circuit if true
+      }
+    }
+
+    return $r;
+  }
+
+  ## A single expression to match
+  elsif (exists $e->{lhs}) {
+    my ($fv, $exists) = _field($o, $e->{lhs});
+    return 0 unless $exists;
+    return 0 unless defined $fv;
+
+    my $op  = $e->{op};
+    my $rhs = $e->{rhs};
+    my ($type, $val) = @$rhs;
+
+    ## tokens page.* are fields from the current page
+    if ($type eq 'token' and $val =~ m/^page\.(.+)/) {    #
+      my ($pv, $exists) = _field($page, $1);
+      return 0 unless $exists;
+      return 0 unless defined $pv;
+      $type = 'str';                                      ## TODO: use 'num' if it looks like a number?
+      $val  = $pv;
+    }
+
+    ## TODO: add support for some type => 'func's
+
+    ## Match operators =, ==, and === for those who are JS-freaks
+    if ($op =~ m/^==?=?$/) {
+      if    ($type eq 'str') { return 1 if $fv eq $val }
+      elsif ($type eq 'num') { return 1 if $fv == $val }
+      else                   { die "FATAL: cannot compare '$op' to a '$type'" }
+    }
+
+    ## Match operators !=, !==, and !===, and <> for math freaks
+    elsif ($op =~ m/^!==?=?$/ or $op eq '<>') {
+      if    ($type eq 'str') { return 1 if $fv ne $val }
+      elsif ($type eq 'num') { return 1 if $fv != $val }
+      else                   { die "FATAL: cannot compare '$op' to a '$type'" }
+    }
+    else {
+      die "FATAL: operator '$op' not recognized\n";
+    }
+
+    return 0;
+  }
+
+  ## In case someone adds another one
+  die "FATAL: expression format non known: ", Dumper($e);
+}
+
+
 ## This is a simple structured where that we use on .index rules
 sub query_match_simple {
-  my ($obj, $where) = @_;
+  my ($where, $obj) = @_;
+
+  trace(" match '$obj->{uid}' against '" . Dumper($where) . "'");
 
   for my $k (keys %$where) {
     my ($kv, $exists) = _field($obj, $k);
