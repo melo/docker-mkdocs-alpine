@@ -273,7 +273,7 @@ sub parse_dsl {
       }
 
       ## explicit .end...
-      elsif ($l =~ m/^\s*\.end(:?\s+.+)$/) {
+      elsif ($l =~ m/^\s*\.end(\s+.+)?$/) {
         trace('explicit end of object');
         push @seq, $pop_stack->();
         $keep_seq->();    ## keep trailing WS if we have it
