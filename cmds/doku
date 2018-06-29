@@ -403,11 +403,12 @@ sub parse_dsl {
           line              => $line,
           wrap_cb           => \&wrap_select_obj,
           c                 => {
-            uid    => "action.select.$g_obj->{uid}.$line",
-            type   => 'action',
-            action => 'select',
-            file   => $g_obj->{id},
-            line   => $line,
+            uid       => "action.select.$g_obj->{uid}.$line",
+            type      => 'action',
+            action    => 'select',
+            tmpl_item => "* [{{uid}}]({{url}})\n",
+            file      => $g_obj->{id},
+            line      => $line,
           }
         };
         trace('new select action');
