@@ -635,17 +635,7 @@ OBJ: for my $o (values %{ $db->{objs} }) {
     trace("          not on skip list");
 
     if (my $w = $obj->{where}) {
-      for my $k (keys %$w) {
-        my ($kv, $exists) = _field($o, $k);
-        next OBJ unless $exists and defined $kv;
-
-        my $v = $w->{$k};
-        trace("              check where filter '$k' => $w->{$k} against '$v'");
-
-        if   (ref($v) eq 'Regexp') { next OBJ unless $kv =~ m/$v/ }
-        else                       { next OBJ unless $kv eq $v }
-        trace("              matched!");
-      }
+      next OBJ unless query_match_simple($o, $w);
     }
 
     trace("      all filters passed, object $o->{uid} in the result set");
@@ -910,6 +900,25 @@ sub _query_parser {
   }
 
   return { ok => 1, tree => \@tree };
+}
+
+## This is a simple structured where that we use on .index rules
+sub query_match_simple {
+  my ($obj, $where) = @_;
+
+  for my $k (keys %$where) {
+    my ($kv, $exists) = _field($obj, $k);
+    return unless $exists and defined $kv;
+
+    my $v = $where->{$k};
+    trace("              check where filter '$k' => $where->{$k} against '$v'");
+
+    if   (ref($v) eq 'Regexp') { return unless $kv =~ m/$v/ }
+    else                       { return unless $kv eq $v }
+    trace("              matched!");
+  }
+
+  return 1;
 }
 
 
