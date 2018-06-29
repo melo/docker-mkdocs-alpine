@@ -327,7 +327,7 @@ sub parse_dsl {
 
       ## simple flag attr, no value
       elsif ($l =~ m/^\s*\.(\w+)\s*$/) {
-        my $new_val = $c_obj->{attr}{ lc($1) }++;
+        my $new_val = ++$c_obj->{attr}{ lc($1) };
         delete $c_obj->{buf};    ## Drop empty lines between attrs
         trace("found flag attr '$1', value now '$new_val'");
       }
