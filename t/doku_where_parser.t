@@ -8,68 +8,66 @@ use Data::Dumper;
 
 my @test_cases = (
 
-  ['x = 1',    [{ exp => [{ lhs => 'x', op => '=', rhs => [num => 1] }] }]],
-  ['x = 1.1',  [{ exp => [{ lhs => 'x', op => '=', rhs => [num => 1.1] }] }]],
-  ['x = -1',   [{ exp => [{ lhs => 'x', op => '=', rhs => [num => -1] }] }]],
-  ['x = +1',   [{ exp => [{ lhs => 'x', op => '=', rhs => [num => 1] }] }]],
-  ['x = -1.1', [{ exp => [{ lhs => 'x', op => '=', rhs => [num => -1.1] }] }]],
-  ['x = +1.1', [{ exp => [{ lhs => 'x', op => '=', rhs => [num => 1.1] }] }]],
-  ['x = -.1',  [{ exp => [{ lhs => 'x', op => '=', rhs => [num => -.1] }] }]],
-  ['x = +.1',  [{ exp => [{ lhs => 'x', op => '=', rhs => [num => .1] }] }]],
+  ['x = 1',    { exp => [{ lhs => 'x', op => '=', rhs => [num => 1] }] }],
+  ['x = 1.1',  { exp => [{ lhs => 'x', op => '=', rhs => [num => 1.1] }] }],
+  ['x = -1',   { exp => [{ lhs => 'x', op => '=', rhs => [num => -1] }] }],
+  ['x = +1',   { exp => [{ lhs => 'x', op => '=', rhs => [num => 1] }] }],
+  ['x = -1.1', { exp => [{ lhs => 'x', op => '=', rhs => [num => -1.1] }] }],
+  ['x = +1.1', { exp => [{ lhs => 'x', op => '=', rhs => [num => 1.1] }] }],
+  ['x = -.1',  { exp => [{ lhs => 'x', op => '=', rhs => [num => -.1] }] }],
+  ['x = +.1',  { exp => [{ lhs => 'x', op => '=', rhs => [num => .1] }] }],
 
-  ['x = "42"',     [{ exp => [{ lhs => 'x', op => '=', rhs => [str   => '42'] }] }]],
-  ["x = '42'",     [{ exp => [{ lhs => 'x', op => '=', rhs => [str   => '42'] }] }]],
-  ["x = my_token", [{ exp => [{ lhs => 'x', op => '=', rhs => [token => 'my_token'] }] }]],
-  ["x = func()",   [{ exp => [{ lhs => 'x', op => '=', rhs => [func  => 'func'] }] }]],
+  ['x = "42"',     { exp => [{ lhs => 'x', op => '=', rhs => [str   => '42'] }] }],
+  ["x = '42'",     { exp => [{ lhs => 'x', op => '=', rhs => [str   => '42'] }] }],
+  ["x = my_token", { exp => [{ lhs => 'x', op => '=', rhs => [token => 'my_token'] }] }],
+  ["x = func()",   { exp => [{ lhs => 'x', op => '=', rhs => [func  => 'func'] }] }],
 
-  ["(x = my_token)", [{ exp => [{ exp => [{ lhs => 'x', op => '=', rhs => [token => 'my_token'] }] }] }]],
+  ["(x = my_token)", { exp => [{ exp => [{ lhs => 'x', op => '=', rhs => [token => 'my_token'] }] }] }],
 
   [ 'x = +1.1 or y = "silly string"',
-    [ { exp => [
-          { lhs => 'x', op => '=', rhs => [num => 1.1] },
-          'or',
-          { lhs => 'y', op => '=', rhs => [str => 'silly string'] }
-        ]
-      }
-    ]
+    { exp => [
+        { lhs => 'x', op => '=', rhs => [num => 1.1] },
+        'or',
+        { lhs => 'y', op => '=', rhs => [str => 'silly string'] }
+      ]
+    }
   ],
 
 
   [ '(x = +1.1 or y = "silly string") and(z > 2 or args.xpto <= 3)and a=magical_function()',
-    [ { 'exp' => [
-          { 'exp' => [
-              { 'rhs' => ['num', '1.1'],
-                'op'  => '=',
-                'lhs' => 'x'
-              },
-              'or',
-              { 'lhs' => 'y',
-                'op'  => '=',
-                'rhs' => ['str', 'silly string']
-              }
-            ]
-          },
-          'and',
-          { 'exp' => [
-              { 'rhs' => ['num', 2],
-                'op'  => '>',
-                'lhs' => 'z'
-              },
-              'or',
-              { 'lhs' => 'args.xpto',
-                'op'  => '<=',
-                'rhs' => ['num', 3]
-              }
-            ]
-          },
-          'and',
-          { 'lhs' => 'a',
-            'op'  => '=',
-            'rhs' => ['func', 'magical_function']
-          }
-        ]
-      }
-    ]
+    { 'exp' => [
+        { 'exp' => [
+            { 'rhs' => ['num', '1.1'],
+              'op'  => '=',
+              'lhs' => 'x'
+            },
+            'or',
+            { 'lhs' => 'y',
+              'op'  => '=',
+              'rhs' => ['str', 'silly string']
+            }
+          ]
+        },
+        'and',
+        { 'exp' => [
+            { 'rhs' => ['num', 2],
+              'op'  => '>',
+              'lhs' => 'z'
+            },
+            'or',
+            { 'lhs' => 'args.xpto',
+              'op'  => '<=',
+              'rhs' => ['num', 3]
+            }
+          ]
+        },
+        'and',
+        { 'lhs' => 'a',
+          'op'  => '=',
+          'rhs' => ['func', 'magical_function']
+        }
+      ]
+    }
   ],
 );
 
@@ -228,7 +226,7 @@ sub where_parser {
       elsif ($value =~ s/^([-+]?\.\d+)//) {          ## numbers with just decimals
         push @$tokens, [num => 0 + $1];
       }
-      elsif ($value =~ s/^([\w\.]+)//) {                 ## tokens/strings without white-space
+      elsif ($value =~ s/^([\w\.]+)//) {             ## tokens/strings without white-space
         push @$tokens, [token => $1];
       }
       else {
@@ -242,5 +240,7 @@ sub where_parser {
     die "State '$state' unhandled";
   }
 
-  return { ok => 1, tree => \@tree };
+  die "WTF??? found more than one top level element??? " . Dumper(\@tree) unless @tree == 1;
+
+  return { ok => 1, tree => $tree[0] };
 }

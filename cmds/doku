@@ -899,7 +899,9 @@ sub _query_parser {
     die "State '$state' unhandled";
   }
 
-  return { ok => 1, tree => \@tree };
+  die "WTF??? found more than one top level element??? " . Dumper(\@tree) unless @tree == 1;
+
+  return { ok => 1, tree => $tree[0] };
 }
 
 ## This is a simple structured where that we use on .index rules
