@@ -885,7 +885,7 @@ sub _query_parser {
       elsif ($query =~ s/^([-+]?\.\d+)//) {          ## numbers with just decimals
         push @$tokens, [num => 0 + $1];
       }
-      elsif ($query =~ s/^(\S+)//) {                 ## tokens/strings without white-space
+      elsif ($query =~ s/^([\w\.]+)//) {             ## tokens/strings without white-space
         push @$tokens, [token => $1];
       }
       else {

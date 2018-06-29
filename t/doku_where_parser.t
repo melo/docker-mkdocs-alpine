@@ -22,6 +22,8 @@ my @test_cases = (
   ["x = my_token", [{ exp => [{ lhs => 'x', op => '=', rhs => [token => 'my_token'] }] }]],
   ["x = func()",   [{ exp => [{ lhs => 'x', op => '=', rhs => [func  => 'func'] }] }]],
 
+  ["(x = my_token)", [{ exp => [{ exp => [{ lhs => 'x', op => '=', rhs => [token => 'my_token'] }] }] }]],
+
   [ 'x = +1.1 or y = "silly string"',
     [ { exp => [
           { lhs => 'x', op => '=', rhs => [num => 1.1] },
@@ -226,7 +228,7 @@ sub where_parser {
       elsif ($value =~ s/^([-+]?\.\d+)//) {          ## numbers with just decimals
         push @$tokens, [num => 0 + $1];
       }
-      elsif ($value =~ s/^(\S+)//) {                 ## tokens/strings without white-space
+      elsif ($value =~ s/^([\w\.]+)//) {                 ## tokens/strings without white-space
         push @$tokens, [token => $1];
       }
       else {
