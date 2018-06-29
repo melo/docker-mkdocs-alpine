@@ -583,6 +583,11 @@ sub wrap_select_obj {
     $obj->{order_by} = $order_by;
   }
 
+  ## Promote custom where
+  if (my ($where) = _field($obj, 'attr.where')) {
+    $obj->{where} = $where;
+  }
+
   return;
 }
 
@@ -635,7 +640,8 @@ OBJ: for my $o (values %{ $db->{objs} }) {
     trace("          not on skip list");
 
     if (my $w = $obj->{where}) {
-      next OBJ unless query_match_simple($o, $w);
+      my $matched = ref($w) ? query_match_simple($w, $o, $g_obj, $obj) : query_match($w, $o, $g_obj, $obj);
+      next OBJ unless $matched;
     }
 
     trace("      all filters passed, object $o->{uid} in the result set");
