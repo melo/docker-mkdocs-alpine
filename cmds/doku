@@ -164,8 +164,13 @@ sub extract_meta {
 
   my $docs = $db->{docroot};
 
-  my $rf    = $f->relative($docs);
-  my $mime  = $mdb->mimeTypeOf($f->basename);
+  my $rf   = $f->relative($docs);
+  my $mime = $mdb->mimeTypeOf($f->basename);
+  if (!$mime) {
+    push @{ $db->{notices} }, [warn => $f, "MIME type for '$f' not found"];
+    $mime = 'application/x-octect-stream';
+  }
+
   my $g_obj = {
     type      => 'file',
     id        => $rf,
