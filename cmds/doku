@@ -984,14 +984,14 @@ sub _query_eval_expression {
     if ($op =~ m/^==?=?$/) {
       if    ($type eq 'str') { return 1 if $fv eq $val }
       elsif ($type eq 'num') { return 1 if $fv == $val }
-      else                   { die "FATAL: cannot compare '$op' to a '$type'" }
+      else                   { die "FATAL: cannot compare '$op' to a '$type' (value '$val')" }
     }
 
     ## Match operators !=, !==, and !===, and <> for math freaks
     elsif ($op =~ m/^!==?=?$/ or $op eq '<>') {
       if    ($type eq 'str') { return 1 if $fv ne $val }
       elsif ($type eq 'num') { return 1 if $fv != $val }
-      else                   { die "FATAL: cannot compare '$op' to a '$type'" }
+      else                   { die "FATAL: cannot compare '$op' to a '$type' (value '$val')" }
     }
     else {
       die "FATAL: operator '$op' not recognized\n";
