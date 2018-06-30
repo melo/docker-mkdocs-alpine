@@ -1074,6 +1074,11 @@ sub _tmpl_render_list {
 
   my $txt = '';
 
+  ## If we have a "if empty" template and no results, use it and skip the rest
+  if (my $tmpl = _tmpl_get($obj, 'if_empty') and !@$list) {
+    return _tmpl_render_single($tmpl, $obj);
+  }
+
   my $tmpl = _tmpl_get($obj, 'item');
   die "FATAL: render list under obj $obj->{uid} failed, no tmpl_item defined and no default" unless defined $tmpl;
 
