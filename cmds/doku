@@ -760,6 +760,7 @@ sub _build_order_by {
 
 sub _query_parser {
   my ($query) = @_;
+  my $oq = $query;
 
   my @tree;
   my @stack;
@@ -787,7 +788,7 @@ sub _query_parser {
     my $rhs = pop @$tokens;
     my $op  = pop @$tokens;
     my $lhs = pop @$tokens;
-    push @$tokens, { lhs => $lhs, op => $op, rhs => $rhs };
+    push @$tokens, { lhs => $lhs, op => $op, rhs => $rhs, txt => "$lhs $op $rhs->[0] '$rhs->[1]'" };
   };
 
 
@@ -838,7 +839,9 @@ sub _query_parser {
     if ($state eq 'capture_exp') {
       pop @stack;
       my $parent = $find_tokens->() || \@tree;
-      push @$parent, { exp => $sp->{tokens} };
+      my $tks    = $sp->{tokens};
+      my $txt    = '( ' . join(' ', map { (ref() ? $_->{txt} : $_) } @$tks) . ' )';
+      push @$parent, { exp => $tks, txt => $txt };
       next;
     }
 
@@ -912,7 +915,7 @@ sub _query_parser {
 
   die "WTF??? found more than one top level element??? " . Dumper(\@tree) unless @tree == 1;
 
-  return { ok => 1, tree => $tree[0] };
+  return { ok => 1, tree => $tree[0], query => $oq };
 }
 
 ## Match long where conditions
