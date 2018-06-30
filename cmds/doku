@@ -617,13 +617,13 @@ sub render_action {
 }
 
 sub actions_render_index {
-  trace('render index action');
+  trace("render index action at line $_[0]{line}");
   return _select_style_render(@_);
 }
 
 ## .select render
 sub actions_render_select {
-  trace('render select action');
+  trace("render select action at line $_[0]{line}");
   return _select_style_render(@_);
 }
 
