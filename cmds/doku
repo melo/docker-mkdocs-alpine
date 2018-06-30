@@ -1017,14 +1017,17 @@ sub _query_eval_expression {
     trace("      try match $e->{lhs} => '$fv', op '$op', rhs => [$type, $val]");
 
     ## tokens page.* are fields from the current page
-    if ($type eq 'token' and $val =~ m/^page\.(.+)/) {    #
-      trace("      rewrite [$type, $val]");
-      my ($pv, $exists) = _field($page, $1);
+    if ($type eq 'token' and $val =~ m/^(page|this)\.(.+)/) {    #
+      my $pf = $2;
+      my ($pv, $exists) = _field($page, $pf);
+      trace("      rewrite [$type, $val] => (exists: "
+          . ($exists ? 'yes, new val ' . (defined $pv ? "'$pv'" : '<not-defined>') : 'no')
+          . ")");
       return 0 unless $exists;
       return 0 unless defined $pv;
-      $type = 'str';                                      ## TODO: use 'num' if it looks like a number?
+      $type = 'str';                                             ## TODO: use 'num' if it looks like a number?
       $val  = $pv;
-      trace("      rhs => [$type, $val]");
+      trace("        new rhs => [$type, $val]");
     }
 
     ## TODO: add support for some type => 'func's
