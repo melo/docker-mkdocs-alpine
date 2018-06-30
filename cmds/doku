@@ -999,7 +999,7 @@ sub _query_eval_expression {
       }
     }
 
-    trace("    check expression '$e->{txt}' => $r");
+    trace("    final: check expression '$e->{txt}' => $r");
     return $r;
   }
 
@@ -1014,7 +1014,6 @@ sub _query_eval_expression {
     my $op  = $e->{op};
     my $rhs = $e->{rhs};
     my ($type, $val) = @$rhs;
-    trace("      try match $e->{lhs} => '$fv', op '$op', rhs => [$type, $val]");
 
     ## tokens page.* are fields from the current page
     if ($type eq 'token' and $val =~ m/^(page|this)\.(.+)/) {    #
@@ -1031,6 +1030,8 @@ sub _query_eval_expression {
     }
 
     ## TODO: add support for some type => 'func's
+
+    trace("      try match $e->{lhs} => '$fv', op '$op', rhs => [$type, $val]");
 
     ## Match operators =, ==, and === for those who are JS-freaks
     if ($op =~ m/^==?=?$/) {
