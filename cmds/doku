@@ -618,6 +618,7 @@ sub wrap_index_obj {
 sub wrap_select_obj {
   my ($obj) = @_;
 
+  $obj->{uid} ||= '<inline_object>';
   trace(" wrapping select obj $obj->{uid}");
 
   ## Normalize some fields
@@ -668,48 +669,19 @@ sub render_action {
 }
 
 sub actions_render_index {
-  trace("render index action at line $_[0]{line}");
   return _select_style_render(@_);
 }
 
 ## .select render
 sub actions_render_select {
-  trace("render select action at line $_[0]{line}");
   return _select_style_render(@_);
 }
 
 sub _select_style_render {
   my ($obj, $g_obj, $db) = @_;
+  trace("render '$obj->{action}' action at line $obj->{line}");
 
-  ## Prepare our filters
-  my $type_filter = $obj->{target};
-  my $skip_lst    = $obj->{skip};
-
-  my @results;
-OBJ: for my $o (values %{ $db->{objs} }) {
-    trace("  check if object $o->{uid} for type '$type_filter'");
-
-    next unless $type_filter eq '*' or $o->{type} eq $type_filter;
-    trace("          matches type filter '$type_filter'");
-
-    next if @$skip_lst and grep { $_ eq $o->{uid} } @$skip_lst;
-    trace("          not on skip list");
-
-    if (my $w = $obj->{where}) {
-      my $matched = ref($w) ? query_match_simple($w, $o, $g_obj, $obj) : query_match($w, $o, $g_obj, $obj);
-      next OBJ unless $matched;
-    }
-
-    trace("      all filters passed, object $o->{uid} in the result set");
-
-    push @results, $o;
-  }
-
-  trace('  sorting results, count is ' . @results);
-  my $sorted = _sort_results($obj, \@results);
-
-  trace('  rendering list');
-  return _tmpl_render_list($obj, $sorted);
+  return _tmpl_render_list($obj, db_select($db, $obj, $g_obj));
 }
 
 
