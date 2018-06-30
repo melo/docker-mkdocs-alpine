@@ -581,6 +581,11 @@ sub rewrite_file {
 sub wrap_index_obj {
   my ($obj) = @_;
 
+  ## Wrap us only once
+  return if $obj->{_wrapper};
+  $obj->{_wrapper} = 1;
+
+  $obj->{uid} ||= '<inline_object>';
   trace(" wrapping index obj $obj->{uid}");
 
   ## .index can use select wrappers too
@@ -617,6 +622,10 @@ sub wrap_index_obj {
 ## action select wrapper
 sub wrap_select_obj {
   my ($obj) = @_;
+
+  ## Wrap us only once
+  return if $obj->{_wrapper};
+  $obj->{_wrapper} = 1;
 
   $obj->{uid} ||= '<inline_object>';
   trace(" wrapping select obj $obj->{uid}");
