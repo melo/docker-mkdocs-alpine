@@ -889,13 +889,13 @@ sub _query_parser {
 
     ## Right side parsing
     if ($state eq 'right_side') {
-      if ($query =~ s/^(\w+)\(\)//) {    ## functions...
+      if ($query =~ s/^(\w+)\(\)//) {         ## functions...
         push @$tokens, [func => $1];
       }
-      elsif ($query =~ s/^'(.+?)'//) {    ## single quote strings
+      elsif ($query =~ s/^'(.+?)'//) {        ## single quote strings
         push @$tokens, [str => $1];
       }
-      elsif ($query =~ s/^"(.+?)"//) {    ## double quote strings
+      elsif ($query =~ s/^"(.+?)"//) {        ## double quote strings
         push @$tokens, [str => $1];
       }
       elsif ($query =~ s/^([-+]?\d+(\.\d+)?)//) {    ## numbers
