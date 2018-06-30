@@ -1029,6 +1029,8 @@ sub _query_eval_expression {
     my $fn = $e->{bool};
     trace("      match boolean function $fn()");
 
+    if ($fn eq 'is_document') { return is_document($o) }
+
     die "FATAL: boolean function $fn() non known";
   }
 
