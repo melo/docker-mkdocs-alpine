@@ -1035,7 +1035,7 @@ sub query_match_simple {
     return unless $exists and defined $kv;
 
     my $v = $where->{$k};
-    trace("              check where filter '$k' => $where->{$k} against '$v'");
+    trace("              check where filter '$k' => '$v' against '$kv'");
 
     if   (ref($v) eq 'Regexp') { return unless $kv =~ m/$v/ }
     else                       { return unless $kv eq $v }
