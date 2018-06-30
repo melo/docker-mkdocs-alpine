@@ -1228,6 +1228,8 @@ sub db_select {
 
   trace("Start select logic");
 
+  wrap_select_obj($select);    ## make sure we are properly wraped
+
   ## Prepare our filters
   my $type_filter = $select->{target};
   my $skip_lst    = $select->{skip};
