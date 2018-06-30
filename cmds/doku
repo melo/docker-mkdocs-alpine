@@ -1240,6 +1240,45 @@ sub is_folder {
 
 
 #######################################
+#### DB Utils
+
+sub db_select {
+  my ($db, $select, $ctx) = @_;
+
+  trace("Start select logic");
+
+  ## Prepare our filters
+  my $type_filter = $select->{target};
+  my $skip_lst    = $select->{skip};
+
+  my @results;
+OBJ: for my $o (values %{ $db->{objs} }) {
+    trace("  check if object $o->{uid} for type '$type_filter'");
+
+    next unless $type_filter eq '*' or $o->{type} eq $type_filter;
+    trace("          matches type filter '$type_filter'");
+
+    next if @$skip_lst and grep { $_ eq $o->{uid} } @$skip_lst;
+    trace("          not on skip list");
+
+    if (my $w = $select->{where}) {
+      my $matched = ref($w) ? query_match_simple($w, $o, $ctx, $select) : query_match($w, $o, $ctx, $select);
+      next OBJ unless $matched;
+    }
+
+    trace("      all filters passed, object $o->{uid} in the result set");
+
+    push @results, $o;
+  }
+
+  trace('  sorting results, count is ' . @results);
+  my $sorted = _sort_results($select, \@results);
+
+  return $sorted;
+}
+
+
+#######################################
 #### Logger
 
 sub _log {
