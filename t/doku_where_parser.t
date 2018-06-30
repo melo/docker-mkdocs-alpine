@@ -24,6 +24,9 @@ my @test_cases = (
 
   ["(x = my_token)", { exp => [{ exp => [{ lhs => 'x', op => '=', rhs => [token => 'my_token'] }] }] }],
 
+  ['x ~ "^42$"',     { exp => [{ lhs => 'x', op => '~', rhs => [str => '^42$'] }] }],
+  ['x ~ "^4\(\)2$"', { exp => [{ lhs => 'x', op => '~', rhs => [str => '^4\(\)2$'] }] }],
+
   [ 'x = +1.1 or y = "silly string"',
     { exp => [
         { lhs => 'x', op => '=', rhs => [num => 1.1] },
@@ -186,7 +189,7 @@ sub where_parser {
 
     ## Operators
     if ($state eq 'operator') {
-      if ($value =~ s/^([=!<>]+)//g) {
+      if ($value =~ s/^([=!<>~]+)//g) {
         ## TODO: check for valid operators
         push @$tokens, $1;
       }

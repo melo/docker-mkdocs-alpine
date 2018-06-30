@@ -859,7 +859,7 @@ sub _query_parser {
 
     ## Operators
     if ($state eq 'operator') {
-      if ($query =~ s/^([=!<>]+)//g) {
+      if ($query =~ s/^([=!<>~]+)//g) {
         ## TODO: check for valid operators
         push @$tokens, $1;
       }
@@ -988,6 +988,12 @@ sub _query_eval_expression {
       if    ($type eq 'str') { return 1 if $fv eq $val }
       elsif ($type eq 'num') { return 1 if $fv == $val }
       else                   { die "FATAL: cannot compare '$op' to a '$type' (value '$val')" }
+    }
+
+    ## Match regexp ops ~
+    elsif ($op =~ m/^~~?~?$/) {
+      if ($type eq 'str' or $type eq 'num') { return 1 if $fv =~ m/$val/ }
+      else                                  { die "FATAL: cannot compare '$op' to a '$type' (value '$val')" }
     }
 
     ## Match operators !=, !==, and !===, and <> for math freaks
