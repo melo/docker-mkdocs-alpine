@@ -85,34 +85,45 @@ sub parse_wiki {
 
   my $i = $docs->iterator({ recurse => 1 });
   while (my $f = $i->()) {
-    next unless $f->is_file;
+    my $meta;
+    if ($f->is_file) { $meta = extract_meta_from_file($f, \%db) }
+    elsif ($f->is_dir) { $meta = extract_meta_from_folder($f, \%db) }
+    else               { trace(" ignoring file $f, could not determine type"); next }    ## wtf??? notice?
 
-    ## extract metadata from file
-    my $meta = extract_meta($f, \%db);
-
-    ## Keep track of all files we find, with their ID's, we have multiple files
-    my $rf = $f->relative($docs);
-    push @{ $db{files}{all} }, $rf;
-
-    if    ($meta->{skip})    { push @{ $db{files}{skipped} }, $rf }
-    elsif ($meta->{rewrite}) { push @{ $db{files}{rewrite} }, $rf }
-    else                     { push @{ $db{files}{copy} },    $rf }
-
-    ## Add all found objects to our DB
-    for my $obj (@{ $meta->{objs} || [] }) {
-      my $uid = $obj->{uid};
-
-      if (my $prev = $db{objs}{$uid}) {
-        push @{ $db{notices} },
-          [error => $f, "object '$uid' found in $f was previously declared at $prev->{file}, line $prev->{line}"];
-        next;
-      }
-
-      $db{objs}{$uid} = $obj;
-    }
+    _idx_meta($docs, \%db, $f, $meta);
   }
 
   return \%db;
+}
+
+sub _idx_meta {
+  my ($docs, $db, $f, $meta) = @_;
+
+  my $rf = $f->relative($docs);
+
+  if ($meta->{file_idx}) {
+    ## Keep track of all files we find, with their ID's, we have multiple files
+    push @{ $db->{files}{all} }, $rf;
+
+    if    ($meta->{skip})    { push @{ $db->{files}{skipped} }, $rf }
+    elsif ($meta->{rewrite}) { push @{ $db->{files}{rewrite} }, $rf }
+    else                     { push @{ $db->{files}{copy} },    $rf }
+  }
+
+  ## Keep track of all found objects to our DB
+  for my $obj (@{ $meta->{objs} || [] }) {
+    my $uid = $obj->{uid};
+
+    if (my $prev = $db->{objs}{$uid}) {
+      push @{ $db->{notices} },
+        [error => $f, "object '$uid' found in $f was previously declared at $prev->{file}, line $prev->{line}"];
+      next;
+    }
+
+    $db->{objs}{$uid} = $obj;
+  }
+
+  return;
 }
 
 
@@ -155,9 +166,9 @@ sub build_wiki {
 
 
 #######################################
-### Extract metadata from files
+### Extract metadata from files/folders
 
-sub extract_meta {
+sub extract_meta_from_file {
   my ($f, $db) = @_;
 
   debug(\"", "Check file $f");
@@ -182,11 +193,51 @@ sub extract_meta {
     attr      => { name => $f->basename },
   };
   $g_obj->{uid} = "$g_obj->{type}.$g_obj->{id}";
-  my %meta = (objs => [$g_obj]);
 
-  parse_dsl($f, $db, \%meta) if $mime and $mime eq 'text/markdown';
+  my %meta = (objs => [$g_obj], uid => $g_obj->{uid}, file_idx => 1);
+  parse_dsl($f, $db, \%meta) if is_document($g_obj);
 
   return \%meta;
+}
+
+sub extract_meta_from_folder {
+  my ($f, $db) = @_;
+
+  debug(\"", "Check folder $f");
+
+  my $docs = $db->{docroot};
+  my $rf   = $f->relative($docs);
+
+  my $folder_obj = {
+    type      => 'folder',
+    id        => $rf,
+    parent    => $f->parent->relative($docs),
+    name      => $f->basename,
+    path      => $rf,
+    mime_type => is_folder(),
+    attr      => { name => $f->basename },
+  };
+  $folder_obj->{uid} = "$folder_obj->{type}.$folder_obj->{id}";
+
+  ## parse .folder.json attrs
+  my $meta_file = $f->child('.folder.json');
+  if ($meta_file->exists) {
+    my $attrs = eval { decode_json($meta_file->slurp_raw) };
+    if (ref($attrs) eq 'HASH') {
+      $folder_obj->{attr} = { %{ $folder_obj->{attr} }, %$attrs };
+    }
+    else {
+      die "FATAL: invalid folder meta file '$meta_file': " . ($@ || 'must be a object');
+    }
+  }
+
+  ## See if we can have a URL
+  my $index_file = $f->child('index.md');
+  if ($index_file->exists) {
+    $folder_obj->{url} = $rf eq '.' ? '/index.md' : "/$rf/index.md";
+  }
+
+  return { objs => [$folder_obj], uid => $folder_obj->{uid} };
 }
 
 
@@ -1029,7 +1080,8 @@ sub _query_eval_expression {
     my $fn = $e->{bool};
     trace("      match boolean function $fn()");
 
-    if ($fn eq 'is_document') { return is_document($o) }
+    if    ($fn eq 'is_document') { return is_document($o) }
+    elsif ($fn eq 'is_folder')   { return is_folder($o) }
 
     die "FATAL: boolean function $fn() non known";
   }
@@ -1175,6 +1227,14 @@ sub is_document {
 
   return $mime unless @_;
   return $_[0]->{type} eq 'file' && $_[0]->{mime_type} eq $mime if ref $_[0];
+  return $_[0] eq $mime;
+}
+
+sub is_folder {
+  CORE::state $mime = 'x-doku/folder';
+
+  return $mime unless @_;
+  return $_[0]->{type} eq 'folder' && $_[0]->{mime_type} eq $mime if ref $_[0];
   return $_[0] eq $mime;
 }
 
