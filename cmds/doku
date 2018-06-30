@@ -959,11 +959,14 @@ sub _query_eval_expression {
       }
     }
 
+    trace("    check expression '$e->{txt}' => $r");
     return $r;
   }
 
   ## A single expression to match
   elsif (exists $e->{lhs}) {
+    trace("    check simple '$e->{txt}'");
+
     my ($fv, $exists) = _field($o, $e->{lhs});
     return 0 unless $exists;
     return 0 unless defined $fv;
@@ -971,20 +974,24 @@ sub _query_eval_expression {
     my $op  = $e->{op};
     my $rhs = $e->{rhs};
     my ($type, $val) = @$rhs;
+    trace("      try match $e->{lhs} => '$fv', op '$op', rhs => [$type, $val]");
 
     ## tokens page.* are fields from the current page
     if ($type eq 'token' and $val =~ m/^page\.(.+)/) {    #
+      trace("      rewrite [$type, $val]");
       my ($pv, $exists) = _field($page, $1);
       return 0 unless $exists;
       return 0 unless defined $pv;
       $type = 'str';                                      ## TODO: use 'num' if it looks like a number?
       $val  = $pv;
+      trace("      rhs => [$type, $val]");
     }
 
     ## TODO: add support for some type => 'func's
 
     ## Match operators =, ==, and === for those who are JS-freaks
     if ($op =~ m/^==?=?$/) {
+      trace("      will match '$fv' ==/eq '$val'");
       if    ($type eq 'str') { return 1 if $fv eq $val }
       elsif ($type eq 'num') { return 1 if $fv == $val }
       else                   { die "FATAL: cannot compare '$op' to a '$type' (value '$val')" }
@@ -992,12 +999,14 @@ sub _query_eval_expression {
 
     ## Match regexp ops ~
     elsif ($op =~ m/^~~?~?$/) {
+      trace("      will match '$fv' =~ m/$val/");
       if ($type eq 'str' or $type eq 'num') { return 1 if $fv =~ m/$val/ }
       else                                  { die "FATAL: cannot compare '$op' to a '$type' (value '$val')" }
     }
 
     ## Match operators !=, !==, and !===, and <> for math freaks
     elsif ($op =~ m/^!==?=?$/ or $op eq '<>') {
+      trace("      will match '$fv' !=/ne m/$val/");
       if    ($type eq 'str') { return 1 if $fv ne $val }
       elsif ($type eq 'num') { return 1 if $fv != $val }
       else                   { die "FATAL: cannot compare '$op' to a '$type' (value '$val')" }
@@ -1006,6 +1015,7 @@ sub _query_eval_expression {
       die "FATAL: operator '$op' not recognized\n";
     }
 
+    trace("      failed simple match");
     return 0;
   }
 
