@@ -81,7 +81,7 @@ sub parse_wiki {
   my ($wiki) = @_;
 
   my $docs = $wiki->child('docs');
-  my %db = (root => $wiki, docroot => $wiki->child('docs'));
+  my %db = (root => $wiki, docroot => $docs);
 
   my $i = $docs->iterator({ recurse => 1 });
   while (my $f = $i->()) {
@@ -90,16 +90,17 @@ sub parse_wiki {
     elsif ($f->is_dir) { $meta = extract_meta_from_folder($f, \%db) }
     else               { trace(" ignoring file $f, could not determine type"); next }    ## wtf??? notice?
 
-    _idx_meta($docs, \%db, $f, $meta);
+    _idx_meta(\%db, $f, $meta);
   }
 
   return \%db;
 }
 
 sub _idx_meta {
-  my ($docs, $db, $f, $meta) = @_;
+  my ($db, $f, $meta) = @_;
 
-  my $rf = $f->relative($docs);
+  my $docs = $db->{docroot};
+  my $rf   = $f->relative($docs);
 
   if ($meta->{file_idx}) {
     ## Keep track of all files we find, with their ID's, we have multiple files
