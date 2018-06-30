@@ -27,6 +27,8 @@ my @test_cases = (
   ['x ~ "^42$"',     { exp => [{ lhs => 'x', op => '~', rhs => [str => '^42$'] }] }],
   ['x ~ "^4\(\)2$"', { exp => [{ lhs => 'x', op => '~', rhs => [str => '^4\(\)2$'] }] }],
 
+  ['boo_function()', { exp => [{ bool => 'boo_function' }] }],
+
   [ 'x = +1.1 or y = "silly string"',
     { exp => [
         { lhs => 'x', op => '=', rhs => [num => 1.1] },
@@ -202,25 +204,30 @@ sub where_parser {
 
     ## Left side parsing
     if ($state eq 'left_side') {
-      if ($value =~ s/^([\w\.]+)//) {    ## a variable
+      pop @stack;
+      if ($value =~ s/^([\w\._]+)\(\)//) {    ## a boolean function
+        push @$tokens, { bool => $1 };
+        pop @stack;                           ## no need for operators
+        pop @stack;                           ## ... nor right side
+      }
+      elsif ($value =~ s/^([\w\.]+)//) {      ## a variable
         push @$tokens, $1;
       }
       else {
         return { error => 'could not parse left_side', ctx => $value };
       }
-      pop @stack;
       next;
     }
 
     ## Right side parsing
     if ($state eq 'right_side') {
-      if ($value =~ s/^(\w+)\(\)//) {    ## functions...
+      if ($value =~ s/^(\w+)\(\)//) {         ## functions...
         push @$tokens, [func => $1];
       }
-      elsif ($value =~ s/^'(.+?)'//) {    ## single quote strings
+      elsif ($value =~ s/^'(.+?)'//) {        ## single quote strings
         push @$tokens, [str => $1];
       }
-      elsif ($value =~ s/^"(.+?)"//) {    ## double quote strings
+      elsif ($value =~ s/^"(.+?)"//) {        ## double quote strings
         push @$tokens, [str => $1];
       }
       elsif ($value =~ s/^([-+]?\d+(\.\d+)?)//) {    ## numbers

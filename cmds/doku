@@ -872,13 +872,18 @@ sub _query_parser {
 
     ## Left side parsing
     if ($state eq 'left_side') {
-      if ($query =~ s/^([\w\.]+)//) {    ## a variable
+      pop @stack;
+      if ($query =~ s/^([\w\._]+)\(\)//) {    ## a boolean function
+        push @$tokens, { bool => $1, txt => "bool $1()" };
+        pop @stack;                           ## no need for operators
+        pop @stack;                           ## ... nor right side
+      }
+      elsif ($query =~ s/^([\w\.]+)//) {      ## a variable
         push @$tokens, $1;
       }
       else {
         return { error => 'could not parse left_side', ctx => $query };
       }
-      pop @stack;
       next;
     }
 
@@ -1017,6 +1022,14 @@ sub _query_eval_expression {
 
     trace("      failed simple match");
     return 0;
+  }
+
+  ## Boolean functions
+  elsif (exists $e->{bool}) {
+    my $fn = $e->{bool};
+    trace("      match boolean function $fn()");
+
+    die "FATAL: boolean function $fn() non known";
   }
 
   ## In case someone adds another one
