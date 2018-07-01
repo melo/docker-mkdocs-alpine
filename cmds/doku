@@ -218,6 +218,7 @@ sub build_wiki {
     }
   }
 
+  mkdocs_update_pages($output_path, $db);    ## will only work if mkdocs.yml is present
   $output_path->child('db.json')->spew_raw(JSON::MaybeXS->new->convert_blessed->canonical->encode($db));
 }
 
