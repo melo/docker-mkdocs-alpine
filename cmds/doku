@@ -174,6 +174,68 @@ sub build_wiki {
 
 
 #######################################
+### Generate document tree
+#
+# TODO: See https://github.com/lukasgeiter/mkdocs-awesome-pages-plugin
+# for more ideas for the future
+#
+# In particular:
+#  * collapsed sections is nice: if a folder only has one file, move it to the parent
+#  * custom arranje orders at the folder level: use the .folder.json metadata to arrange
+#    the order of the childs, very flexible
+#
+
+sub generate_page_tree {
+  my ($db) = @_;
+
+  my $root;
+  my %trees;
+
+  my $folders = db_select($db, { where => 'is_folder()' });
+  for my $f (sort { length($a->{path}) <=> length($b->{path}) } @$folders) {
+    my $childs = db_select(
+      $db,
+      { where    => 'parent = this.path and (is_document() or is_folder())',
+        order_by => 'num asc attr.index_order=10000'
+      },
+      $f    ## first parameter is the "this" or "page" object
+    );
+
+    my @pages;
+    for my $c (@$childs) {
+      ## Decide on the title for the link
+      my $title;
+      if    (exists $c->{attr}{index_title}) { $title = $c->{attr}{index_title} }
+      elsif (exists $c->{attr}{title})       { $title = $c->{attr}{title} }
+      else                                   { $title = $c->{name} }
+
+      ## Files we store directly, but folders we keep track of the subtree
+      ## to graft their own pages later
+      if ($c->{type} eq 'file') {
+        my $skip = exists $c->{attr}{skip_index} ? $c->{attr}{skip_index} : 0;
+        push @pages, { title => $title, path => "$c->{path}", skip => $skip };
+      }
+      else {
+        my $entry = { title => $title };
+        push @pages, $entry;
+        $trees{ $c->{uid} } = $entry;
+      }
+    }
+
+    ## Update and nest the tree's
+    if (my $subtree = delete $trees{ $f->{uid} }) {
+      $subtree->{pages} = \@pages;
+    }
+    else {
+      $root = { pages => \@pages };
+    }
+  }
+
+  return $root;
+}
+
+
+#######################################
 ### Extract metadata from files/folders
 
 sub extract_meta_from_file {
