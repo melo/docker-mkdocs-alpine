@@ -22,7 +22,10 @@
 # > To make the explanation less verbose, all examples will make use of the
 # > `mkdocs` alias.
 #
-# If you want to explore
+# If you want to explore the container, use `mkdocs sh`.
+#
+# If you can also see this message with `mkdocs help`.
+#
 #
 use strict;
 use warnings;
