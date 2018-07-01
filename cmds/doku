@@ -198,7 +198,7 @@ sub build_wiki {
   ## Rewrite documents
   for my $f (@{ $db->{files}{rewrite} }) {
     my ($src, $dest) = $doc_src_dest->($f);
-    trace("rewrite '$src' to '$dest'");
+    trace("rewrite '$f': from '$src' to '$dest'");
     rewrite_file($f, $db, $src, $dest);
   }
 
