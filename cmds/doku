@@ -257,6 +257,7 @@ sub generate_page_tree {
       my $title;
       if    (exists $c->{attr}{index_title}) { $title = $c->{attr}{index_title} }
       elsif (exists $c->{attr}{title})       { $title = $c->{attr}{title} }
+      elsif (exists $c->{attr}{name})        { $title = $c->{attr}{name} }
       else                                   { $title = $c->{name} }
 
       ## Files we store directly, but folders we keep track of the subtree
