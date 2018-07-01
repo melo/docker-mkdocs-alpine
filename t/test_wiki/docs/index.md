@@ -26,12 +26,19 @@ all
 ## Index of this folder files + subfolers
 
 .index
-.only_folders
+.where is_document() or is_folder()
+.order_by path
 
 
 ## Index of specific folder
 
-In this case, the `section/` folder:
+In this case, the `section/` folder files:
 
 .index
-.path section
+.folder section
+
+Of the `section/` folder files and folders:
+
+.index
+.folder section
+.where is_document() or is_folder()

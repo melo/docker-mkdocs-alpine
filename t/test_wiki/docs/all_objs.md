@@ -1,7 +1,6 @@
 # All Object in database
 
 .select
-.target *
 .tmpl_head <<TMPL
 What follows is a list of all objects on our database...
 TMPL

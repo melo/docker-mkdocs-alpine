@@ -635,18 +635,11 @@ sub parse_dsl {
           line              => $line,
           wrap_cb           => \&wrap_index_obj,
           c                 => {
-            uid       => "action.index.$g_obj->{uid}.$line",
-            type      => 'action',
-            action    => 'index',
-            tmpl_item => "* [{{attr.name}}]({{name}}): {{attr.title || ''}}\n",
-            where     => {
-              parent    => $f->parent->relative($db->{docroot}),
-              mime_type => is_document(),
-            },
-            order_by => 'num attr.order=100',    ## Order by attr.order, if not found use 100
-            skip     => [$g_obj->{uid}],
-            file     => $g_obj->{id},
-            line     => $line,
+            uid    => "action.index.$g_obj->{uid}.$line",
+            type   => 'action',
+            action => 'index',
+            file   => $g_obj->{id},
+            line   => $line,
           }
         };
         trace('new index action');
@@ -783,40 +776,25 @@ sub rewrite_file {
 sub wrap_index_obj {
   my ($obj) = @_;
 
-  ## Wrap us only once
+  ## Wrap us only once - we don't set it to 1 because we call wrap_select_obj later on
   return if $obj->{_wrapper};
-  $obj->{_wrapper} = 1;
-
-  $obj->{uid} ||= '<inline_object>';
   trace(" wrapping index obj $obj->{uid}");
 
-  ## .index can use select wrappers too
+  ## Set some defaults
+  $obj->{uid}       ||= '<inline_index_object>';
+  $obj->{tmpl_item} ||= "* [{{attr.name}}]({{url}}): {{attr.title || ''}}\n";
+  $obj->{order_by} ||= 'num attr.order=100';    ## Order by attr.order, if not found use 100
+
+  ## .index is a select, so wrap that too
   wrap_select_obj(@_);
 
-  # .index targets only files
-  $obj->{target} = 'file';
-
-  ## Take care of .index special attrs
-  my ($path) = _field($obj, 'attr.path');
-  if ($path) {
-    if ($path =~ m{^/(.+)}) { $obj->{where}{parent} = $1 }
-    else {
-      my $p = $obj->{where}{parent};
-      $obj->{where}{parent} = $p eq '.' ? $path : "$p/$path";
-    }
-  }
-
-  my ($incl_folders) = _field($obj, 'attr.only_folders');
-  if ($incl_folders) {
-    my $p = delete $obj->{where}{parent};
-
-    my $re = '^';
-    $re .= "$p/" unless $p eq '.';    ## special case: parent at root of the site is '.'
-    $re .= '[^/]+/index.md$';
-
-    $obj->{where}{path} = qr{$re};
-    delete $obj->{where}{parent};
-  }
+  ## See if we have user-defined where - promoted from attr.where by wrap_select_obj()
+  ## If yes, we bypass most of the where defaults
+  my ($user_where) = _field($obj, 'where');
+  my ($path)       = _field($obj, 'attr.folder');
+  if ($path and $user_where) { $obj->{where} = "parent == '$path' and ($user_where)" }
+  elsif ($path)        { $obj->{where} = "is_document() and parent == '$path'" }
+  elsif (!$user_where) { $obj->{where} = 'is_document() and parent == this.parent and uid != this.uid' }
 
   return;
 }
@@ -829,7 +807,7 @@ sub wrap_select_obj {
   return if $obj->{_wrapper};
   $obj->{_wrapper} = 1;
 
-  $obj->{uid} ||= '<inline_object>';
+  $obj->{uid} ||= '<inline_select_object>';
   trace(" wrapping select obj $obj->{uid}");
 
   ## Normalize some fields
@@ -837,14 +815,6 @@ sub wrap_select_obj {
   $skip_lst = []          unless $skip_lst;
   $skip_lst = [$skip_lst] unless ref($skip_lst) eq 'ARRAY';
   $obj->{skip} = $skip_lst;
-
-  ## Select all object types by default
-  $obj->{target} = exists $obj->{attr}{target} ? $obj->{attr}{target} : '*';
-
-  ## Some "where" shortcuts
-  if (_field($obj, 'attr.only_documents')) {
-    $obj->{where}{mime_type} = is_document();
-  }
 
   ## Promote custom order_by
   if (my ($order_by) = _field($obj, 'attr.order_by')) {
@@ -1278,28 +1248,6 @@ sub _query_eval_expression {
 }
 
 
-## This is a simple structured where that we use on .index rules
-sub query_match_simple {
-  my ($where, $obj) = @_;
-
-  trace(" match '$obj->{uid}' against '" . Dumper($where) . "'");
-
-  for my $k (keys %$where) {
-    my ($kv, $exists) = _field($obj, $k);
-    return unless $exists and defined $kv;
-
-    my $v = $where->{$k};
-    trace("              check where filter '$k' => '$v' against '$kv'");
-
-    if   (ref($v) eq 'Regexp') { return unless $kv =~ m/$v/ }
-    else                       { return unless $kv eq $v }
-    trace("              matched!");
-  }
-
-  return 1;
-}
-
-
 #######################################
 #### Template utils
 
@@ -1424,6 +1372,7 @@ sub _encode_html {
   return $t;
 }
 
+
 #######################################
 #### MIME type matchers
 
@@ -1457,18 +1406,15 @@ sub db_select {
   wrap_select_obj($select);    ## make sure we are properly wraped
 
   ## Prepare our filters
-  my $type_filter = $select->{target};
-  my $skip_lst    = $select->{skip};
+  my $skip_lst = $select->{skip};
 
   my @results;
 OBJ: for my $o (values %{ $db->{objs} }) {
-    trace("  check if object $o->{uid} for type '$type_filter'");
-
-    next unless $type_filter eq '*' or $o->{type} eq $type_filter;
-    trace("          matches type filter '$type_filter'");
-
-    next if @$skip_lst and grep { $_ eq $o->{uid} } @$skip_lst;
-    trace("          not on skip list");
+    if (@$skip_lst) {
+      trace("  check if object $o->{uid} is in skip-list");
+      next if grep { $_ eq $o->{uid} } @$skip_lst;
+      trace("          not on skip list");
+    }
 
     if (my $w = $select->{where}) {
       my $matched = ref($w) ? query_match_simple($w, $o, $ctx, $select) : query_match($w, $o, $ctx, $select);
