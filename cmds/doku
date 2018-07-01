@@ -82,7 +82,23 @@ sub parse_wiki {
   my ($wiki) = @_;
 
   my $docs = $wiki->child('docs');
-  my %db = (root => $wiki, docroot => $docs);
+  my %db   = (
+    root    => $wiki,
+    docroot => $docs,
+    objs    => {},
+    notices => [],
+    files   => {
+      all     => [],
+      skipped => [],
+      rewrite => [],
+      copy    => [],
+      cfg     => [],
+    },
+  );
+
+  ## Keep track of wiki metadata files, they will be copied over
+  ## to the output folder
+  $db{files}{cfg} = _collect_wiki_cfg_files(\%db);
 
   ## Make sure docroot is a object too
   # this makes it easier to "list" all folders and have the docroot there too
@@ -119,7 +135,7 @@ sub _idx_meta {
   }
 
   ## Keep track of all found objects to our DB
-  for my $obj (@{ $meta->{objs} || [] }) {
+  for my $obj (@{ $meta->{objs} }) {
     my $uid = $obj->{uid};
 
     if (my $prev = $db->{objs}{$uid}) {
@@ -132,6 +148,20 @@ sub _idx_meta {
   }
 
   return;
+}
+
+sub _collect_wiki_cfg_files {
+  my ($db) = @_;
+  my $wiki = $db->{root};
+
+  my @cfg_files;
+  my $iter = $wiki->iterator;    ## Not recursive...
+  while (my $f = $iter->()) {
+    next if $f->basename eq 'docs';    ## Skip docroot
+    push @cfg_files, $f->basename;
+  }
+
+  return \@cfg_files;
 }
 
 
@@ -147,24 +177,42 @@ sub build_wiki {
 
   debug(\"", "Build output wiki");
 
-  my $docroot  = $output_path->child('docs');
-  my $src_dest = sub {
+  my $docroot = $output_path->child('docs');
+  $docroot->mkpath;
+
   ## calculate docroot-relative src and dst files for a object
+  my $doc_src_dest = sub {
     my $src  = $db->{docroot}->child($_[0]);
     my $dest = $docroot->child($_[0]);
     $dest->parent->mkpath;
     return ($src, $dest);
   };
 
-  for my $f (@{ $db->{files}{rewrite} || [] }) {
-    my ($src, $dest) = $src_dest->($f);
+  ## calculate wiki-relative src and dst files for a object
+  my $root_src_dest = sub {
+    my $src  = $db->{root}->child($_[0]);
+    my $dest = $output_path->child($_[0]);
+    return ($src, $dest);
+  };
+
+  ## Rewrite documents
+  for my $f (@{ $db->{files}{rewrite} }) {
+    my ($src, $dest) = $doc_src_dest->($f);
     trace("rewrite '$src' to '$dest'");
     rewrite_file($f, $db, $src, $dest);
   }
 
   if ($output_path ne $db->{root}) {
-    for my $f (@{ $db->{files}{copy} || [] }) {
-      my ($src, $dest) = $src_dest->($f);
+    ## Copy over other files
+    for my $f (@{ $db->{files}{copy} }) {
+      my ($src, $dest) = $doc_src_dest->($f);
+      trace("copy '$src' to '$dest'");
+      $src->copy($dest);
+    }
+
+    ## Copy over our config files
+    for my $f (@{ $db->{files}{cfg} }) {
+      my ($src, $dest) = $root_src_dest->($f);
       trace("copy '$src' to '$dest'");
       $src->copy($dest);
     }
