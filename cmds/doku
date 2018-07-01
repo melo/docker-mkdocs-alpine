@@ -602,9 +602,11 @@ sub parse_dsl {
 
       # the first h1 header will serve as attr.title
       elsif ($l =~ m/^#\s*(.+?)(\s+#)?$/) {
-        $g_obj->{attr}{title} ||= $1;
+        if (!$g_obj->{attr}{title}) {
+          $g_obj->{attr}{title} = $1;
+          trace("Found H1, title is now '$g_obj->{attr}{title}'");
+        }
         $keep_line->();
-        trace("Found H1, title is now '$g_obj->{attr}{title}'");
       }
 
       ## A new object is defined
