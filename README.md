@@ -109,3 +109,4 @@ The final image will be a nginx-powered static site.
     override themes to include the `_` prefix trick to hide pages from the navigation. Please note
     that, based on the discussion, we do not expect this to be needed after mkdocs 1.0 is relased.
     See [pages refactor project](https://github.com/mkdocs/mkdocs/projects/2) for status on this.
+    ==> **UPDATE:** the material design includes the fix for the `_` prefix

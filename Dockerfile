@@ -25,7 +25,7 @@ RUN pip install mkdocs pygments                                                 
 ## This mostly deal with hidding navigation elements if they start with a _
 ## See https://github.com/mkdocs/mkdocs/issues/699#issuecomment-157691209
 ## for details
-COPY fixes/material-toc.html /usr/lib/python2.7/site-packages/material/partials/toc.html
+COPY fixes/material-nav.html /usr/lib/python2.7/site-packages/material/partials/nav.html
 
 ## Copy our scripts and make sure they are executable
 COPY cmds/ /usr/local/bin/
