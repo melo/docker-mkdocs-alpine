@@ -1353,6 +1353,15 @@ sub _tmpl_render_single {
     _tmpl_repl($obj, $1)
   /gex;
 
+  ## Raw mode
+  $tmpl =~ s/
+    \{\{\{   ## initial marker for expression
+    (.+?)  ## capture everything inside
+    \}\}\}   ## final marker for expression
+  /
+    _tmpl_repl($obj, $1, 1)
+  /gex;
+
   return $tmpl;
 }
 
@@ -1371,7 +1380,7 @@ sub _tmpl_unescape_expressions {
 }
 
 sub _tmpl_repl {
-  my ($obj, $expression) = @_;
+  my ($obj, $expression, $raw_mode) = @_;
 
   trace("expression starts as '$expression'");
   $expression =~ s/^\s+|\s+$//g;
@@ -1389,8 +1398,8 @@ sub _tmpl_repl {
   trace(" field '$expression' for $obj->{uid}: val is " . ($exists ? "'$val'" : '<not found>'));
 
   if ($exists) {
-    return $val if defined $val;
-    return '<$expression undefined>';
+    return '<$expression undefined>' unless defined $val;
+    return $raw_mode ? $val : _encode_html($val);
   }
 
   return "<$expression not found>";
@@ -1404,6 +1413,15 @@ sub _tmpl_get {
   return;
 }
 
+sub _encode_html {
+  my ($t) = @_;
+
+  $t =~ s/&/&amp;/gsm;
+  $t =~ s/</&lt;/gsm;
+  $t =~ s/>/&gt;/gsm;
+
+  return $t;
+}
 
 #######################################
 #### MIME type matchers
