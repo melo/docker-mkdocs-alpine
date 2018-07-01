@@ -385,7 +385,7 @@ sub extract_meta_from_file {
     path      => $rf,
     url       => "/$rf",
     mime_type => "$mime",
-    attr      => { name => $f->basename },
+    attr      => { name => $f->basename, index_order => 100 },
   };
   $g_obj->{uid} = "$g_obj->{type}.$g_obj->{id}";
 
@@ -413,7 +413,7 @@ sub extract_meta_from_folder {
     name      => $name,
     path      => $rf,
     mime_type => is_folder(),
-    attr      => { name => $name },
+    attr      => { name => $name, index_order => 50 },
   };
   $folder_obj->{uid} = "$folder_obj->{type}.$folder_obj->{id}";
 
