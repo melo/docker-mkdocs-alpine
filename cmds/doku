@@ -83,9 +83,13 @@ sub parse_wiki {
   my $docs = $wiki->child('docs');
   my %db = (root => $wiki, docroot => $docs);
 
+  ## Make sure docroot is a object too
+  # this makes it easier to "list" all folders and have the docroot there too
+  # on the other hand, we need to deal with 'path' == '.' on some places...
   my $meta = extract_meta_from_folder($docs, \%db);
   _idx_meta(\%db, $docs, $meta);
 
+  ## Scan the entire wiki and index it
   my $i = $docs->iterator({ recurse => 1 });
   while (my $f = $i->()) {
     if ($f->is_file) { $meta = extract_meta_from_file($f, \%db) }
@@ -144,6 +148,7 @@ sub build_wiki {
 
   my $docroot  = $output_path->child('docs');
   my $src_dest = sub {
+  ## calculate docroot-relative src and dst files for a object
     my $src  = $db->{docroot}->child($_[0]);
     my $dest = $docroot->child($_[0]);
     $dest->parent->mkpath;
