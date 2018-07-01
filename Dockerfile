@@ -21,6 +21,12 @@ RUN pip install mkdocs pygments                                                 
     mkdocs-safe-text-plugin                                                       \
  && rm -rf "$HOME/.cache"
 
+## Install template fixes
+## This mostly deal with hidding navigation elements if they start with a _
+## See https://github.com/mkdocs/mkdocs/issues/699#issuecomment-157691209
+## for details
+COPY fixes/material-toc.html /usr/lib/python2.7/site-packages/material/partials/toc.html
+
 ## Copy our scripts and make sure they are executable
 COPY cmds/ /usr/local/bin/
 COPY cmds/cmds.pl /cmds
