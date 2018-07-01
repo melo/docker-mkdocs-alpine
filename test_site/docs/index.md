@@ -1,4 +1,4 @@
-.title for entire file
+.title Home!
 .me for me 
 .you & you
 .all <<till-the-end

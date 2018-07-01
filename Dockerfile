@@ -4,6 +4,7 @@ RUN apk add --no-cache               \
       curl wget make git             \
       python py2-pip                 \
       nodejs yarn                    \
+      nginx                          \
       perl perl-path-tiny perl-yaml-libyaml perl-getopt-long
 
 ## Add the MermaidJS utility
@@ -31,6 +32,13 @@ COPY fixes/material-nav.html /usr/lib/python2.7/site-packages/material/partials/
 COPY cmds/ /usr/local/bin/
 COPY cmds/cmds.pl /cmds
 RUN chmod 555 /cmds /usr/local/bin/*
+
+## Generate a sample wiki
+COPY test_site/ /test/
+RUN cd /test                                       \
+ && mv nginx.conf /etc/nginx/                      \
+ && doku /test /test                               \
+ && mkdocs build --site-dir /usr/share/nginx/html
 
 ## Define our Entrypoint script
 ENTRYPOINT ["/cmds"]

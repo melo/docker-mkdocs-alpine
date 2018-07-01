@@ -9,4 +9,4 @@ List all files that are not on the same folder as we are...
 
 .select
 .order_by path
-.where type = file and parent !== page.parent
+.where type = 'file' and parent !== page.parent

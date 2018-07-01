@@ -46,6 +46,13 @@ if ($cmd eq 'build') {
   die "Failed to exec(mkdocs): $!";
 }
 
+if ($cmd eq 'site') {
+  ## workaround bug in recent alpine image, nginx fail to start
+  system('mkdir', '-p', '/run/nginx');
+  exec('nginx', '-g', 'daemon off;');
+  die "Failed to exec(nginx): $!";
+}
+
 exec($cmd, @rest);
 die "FATAL: command '$cmd' failed to exec(): $!\n";
 
