@@ -497,17 +497,19 @@ sub parse_dsl {
         $line-- && redo;
       }
 
-      if ($l =~ m/^(\.\w+)/) {
-        push @{ $db->{notices} },
-          [warn => $f, "Found '$1' inside here doc, did you miss terminator '$sp->{terminator}' at $f line $line?"];
-        trace('found dot-attr inside here-doc, possible missing terminator');
-      }
-
+      ## Match the terminator, all was well
       if ($l =~ m/^\s*\Q$sp->{terminator}\E$/) {
         trace('found terminator');
         $c_obj->{attr}{ $sp->{field} } = $sp->{buf};
         $pop_stack->();
       }
+      ## a small notice, in case we miss the terminator
+      elsif ($l =~ m/^(\.\w+)/) {
+        push @{ $db->{notices} },
+          [warn => $f, "Found '$1' inside here doc, did you miss terminator '$sp->{terminator}' at $f line $line?"];
+        trace('found dot-attr inside here-doc, possible missing terminator');
+      }
+      ## everything else, it is fair game
       else {
         trace('just another heredoc line');
         $sp->{buf} .= "$l\n";
