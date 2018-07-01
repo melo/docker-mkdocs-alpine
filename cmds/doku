@@ -404,15 +404,16 @@ sub extract_meta_from_folder {
 
   my $docs = $db->{docroot};
   my $rf   = $f->relative($docs);
+  my $name = $f eq $docs ? '<root-folder>' : $f->basename;
 
   my $folder_obj = {
     type      => 'folder',
     id        => $rf,
     parent    => $f->parent->relative($docs),
-    name      => $f->basename,
+    name      => $name,
     path      => $rf,
     mime_type => is_folder(),
-    attr      => { name => $f->basename },
+    attr      => { name => $name },
   };
   $folder_obj->{uid} = "$folder_obj->{type}.$folder_obj->{id}";
 
