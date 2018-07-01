@@ -10,6 +10,7 @@ use JSON::MaybeXS;
 use MIME::Types;
 use Getopt::Long;
 use Data::Dumper;
+use YAML::XS;
 
 
 #######################################
@@ -232,6 +233,80 @@ sub generate_page_tree {
   }
 
   return $root;
+}
+
+
+#######################################
+### MkDocs support
+#
+# On MkDocs there is a limitation that all files in the wiki *must* be in the 'pages'
+# configuration. The 'pages' can either be empty, and in this case they will generate
+# it based on their rules, or it can contain all the pages in the wiki.
+#
+# But we support "skip_index".
+#
+# This two functions will walk the tree, convert it to mkdocs.yml 'pages' format
+# and will also generate the 'Other files' tree, with files that wanted to be skipped.
+#
+# It is a tradeoff between having all files in the 'pages' cfg, and not wanting to see
+# them in the index structure.
+#
+# We hope this requirement will be lifted in a future version of MkDOcs, see
+#
+#
+
+sub mkdocs_update_pages {
+  my ($output_path, $db) = @_;
+
+  my $cfg_path = $output_path->child('mkdocs.yml');
+  if (!$cfg_path->exists) {
+    debug("skipping MkDocs pages update, no '$cfg_path' found");
+    return;
+  }
+
+  my $tree = generate_page_tree($db);
+  $tree = _mkdocs_clean_tree($tree);
+
+  my $cfg = Load($cfg_path->slurp_raw);
+  $cfg->{pages} = $tree->{pages};
+
+  $cfg_path->spew(Dump($cfg));
+
+  return;
+}
+
+sub _mkdocs_clean_tree {
+  my ($root) = @_;
+
+  my ($new_pages, $skip_tree_pages) = _mkdocs_walk_tree_pages_and_cleanup($root->{pages});
+  push @$new_pages, { 'Other files' => $skip_tree_pages } if $skip_tree_pages;
+
+  return { pages => $new_pages };
+}
+
+sub _mkdocs_walk_tree_pages_and_cleanup {
+  my ($current_pages) = @_;
+
+  my @new_pages;
+  my @skip_tree_pages;
+
+  for my $c (@$current_pages) {
+    my $title = $c->{title};
+
+    if (exists $c->{pages}) {    ## This is a folder
+      my $pages = $c->{pages};
+      my ($folder_new_pages, $folder_skip_tree_pages) = _mkdocs_walk_tree_pages_and_cleanup($pages);
+
+      push @new_pages, { $title => $folder_new_pages };
+      push @skip_tree_pages, { $title => $folder_skip_tree_pages } if @$folder_skip_tree_pages;
+    }
+    else {
+      if   ($c->{skip}) { push @skip_tree_pages, { $title => $c->{path} } }
+      else              { push @new_pages,       { $title => $c->{path} } }
+    }
+  }
+
+  return (\@new_pages, \@skip_tree_pages);
 }
 
 
