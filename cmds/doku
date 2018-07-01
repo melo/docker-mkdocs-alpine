@@ -1428,11 +1428,13 @@ sub _encode_html {
 #### MIME type matchers
 
 sub is_document {
-  CORE::state $mime = 'text/x-markdown';
+  CORE::state $mime_match = qr{^text/(x-)?markdown$};
+  CORE::state $mime       = q{text/markdown};
+
 
   return $mime unless @_;
-  return $_[0]->{type} eq 'file' && $_[0]->{mime_type} eq $mime if ref $_[0];
-  return $_[0] eq $mime;
+  return $_[0]->{type} eq 'file' && $_[0]->{mime_type} =~ m/$mime_match/ if ref $_[0];
+  return $_[0] =~ m/$mime_match/;
 }
 
 sub is_folder {
