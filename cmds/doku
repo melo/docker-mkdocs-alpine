@@ -1207,14 +1207,14 @@ sub _query_eval_expression {
       trace("      will match '$fv' ==/eq '$val'");
       if    ($type eq 'str') { return 1 if $fv eq $val }
       elsif ($type eq 'num') { return 1 if $fv == $val }
-      else                   { die "FATAL: cannot compare '$op' to a '$type' (value '$val')" }
+      else                   { die "FATAL: cannot compare '$op' to a '$type' (value '$val') (from '$e->{txt}')" }
     }
 
     ## Match regexp ops ~
     elsif ($op =~ m/^~~?~?$/) {
       trace("      will match '$fv' =~ m/$val/");
       if ($type eq 'str' or $type eq 'num') { return 1 if $fv =~ m/$val/ }
-      else                                  { die "FATAL: cannot compare '$op' to a '$type' (value '$val')" }
+      else { die "FATAL: cannot compare '$op' to a '$type' (value '$val') (from '$e->{txt}')" }
     }
 
     ## Match operators !=, !==, and !===, and <> for math freaks
@@ -1222,10 +1222,10 @@ sub _query_eval_expression {
       trace("      will match '$fv' !=/ne m/$val/");
       if    ($type eq 'str') { return 1 if $fv ne $val }
       elsif ($type eq 'num') { return 1 if $fv != $val }
-      else                   { die "FATAL: cannot compare '$op' to a '$type' (value '$val')" }
+      else                   { die "FATAL: cannot compare '$op' to a '$type' (value '$val') (from '$e->{txt}')" }
     }
     else {
-      die "FATAL: operator '$op' not recognized\n";
+      die "FATAL: operator '$op' not recognized (from '$e->{txt}')\n";
     }
 
     trace("      failed simple match");
@@ -1240,7 +1240,7 @@ sub _query_eval_expression {
     if    ($fn eq 'is_document') { return is_document($o) }
     elsif ($fn eq 'is_folder')   { return is_folder($o) }
 
-    die "FATAL: boolean function $fn() non known";
+    die "FATAL: boolean function $fn() non known (from '$e->{txt}')";
   }
 
   ## In case someone adds another one
