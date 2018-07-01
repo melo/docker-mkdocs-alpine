@@ -8,7 +8,7 @@
     <label class="md-nav__title" for="__toc">{{ lang.t("toc.title") }}</label>
     <ul class="md-nav__list" data-md-scrollfix>
       {% for toc_item in toc_ %}
-        {% if not nav_item.title.startswith("_") %}
+        {% if not toc_item.title.startswith("_") %}
           {% include "partials/toc-item.html" %}
         {% endif %}
       {% endfor %}
