@@ -163,20 +163,21 @@ sub output_files {
     $c_name =~ s/\.sql$//;
     $c_name =~ s/^\d+\-//;
     $c_name =~ s/\/\d+\-/\//g;
+    $c_name =~ s{/}{-}g;
+    $c_name .= '.md';
 
     ## See if we can pick up a description
     my ($descr) = $e->{markdown} =~ m/^#\s*(.*?)\s*#?$/gsm;
     $descr ||= '';
 
     ## Write the md file
-    $f_name =~ s{/}{-}g;
-    $output->child($f_name)->spew($e->{markdown});
+    $output->child($c_name)->spew($e->{markdown});
 
     ## Update the index entry
     $descr = ": $descr" if $descr;
     $idx .= "* [$c_name]($f_name)$descr\n";
     
-    print "+++ generated $f_name for $c_name$descr\n";
+    print "+++ generated $c_name from $f_name\n";
   }
 
   $idx = "# SQL Schema\n\nList of SQL files for the project:\n\n$idx\n";
