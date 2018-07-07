@@ -244,10 +244,7 @@ sub generate_page_tree {
   my $folders = db_select($db, { where => 'is_folder()' });
   for my $f (sort { length($a->{path}) <=> length($b->{path}) } @$folders) {
     my $childs = db_select(
-      $db,
-      { where    => 'parent = this.path and (is_document() or is_folder())',
-        order_by => 'num asc attr.index_order=10000'
-      },
+      $db, { where => 'parent = this.path and (is_document() or is_folder())' },
       $f    ## first parameter is the "this" or "page" object
     );
 
@@ -260,18 +257,27 @@ sub generate_page_tree {
       elsif (exists $c->{attr}{name})        { $title = $c->{attr}{name} }
       else                                   { $title = $c->{name} }
 
+      ## Cache the sort order ID, provide a high default
+      ## Elsewhere on this system, we define the defailt index_order
+      my $order_id;
+      if   (exists $c->{attr}{index_order}) { $order_id = $c->{attr}{index_order} }
+      else                                  { $order_id = 150 }
+
       ## Files we store directly, but folders we keep track of the subtree
       ## to graft their own pages later
       if ($c->{type} eq 'file') {
         my $skip = exists $c->{attr}{skip_index} ? $c->{attr}{skip_index} : 0;
-        push @pages, { title => $title, path => "$c->{path}", skip => $skip };
+        push @pages, { title => $title, path => "$c->{path}", skip => $skip, order_id => $order_id };
       }
       else {
-        my $entry = { title => $title };
+        my $entry = { title => $title, order_id => $order_id };
         push @pages, $entry;
         $trees{ $c->{uid} } = $entry;
       }
     }
+
+    ## Sort them...
+    @pages = sort { $a->{order_id} <=> $b->{order_id} || $a->{title} cmp $b->{title} } @pages;
 
     ## Update and nest the tree's
     if (my $subtree = delete $trees{ $f->{uid} }) {
