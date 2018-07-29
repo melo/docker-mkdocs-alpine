@@ -397,7 +397,7 @@ sub extract_meta_from_file {
 
   $g_obj->{attr}{index_order} = 10 if $rf->basename eq 'index.md';
 
-  my %meta = (objs => [$g_obj], uid => $g_obj->{uid}, file_idx => 1);
+  my %meta = (url_base => $g_obj->{url}, objs => [$g_obj], uid => $g_obj->{uid}, file_idx => 1);
   parse_dsl($f, $db, \%meta) if is_document($g_obj);
 
   return \%meta;
@@ -626,6 +626,7 @@ sub parse_dsl {
           line => $line,
           file => $g_obj->{id},
           attr => { name => $2 },
+          url  => "$meta->{url_base}#$1.$2",
           };
         push @stack, { ctx => 'obj', c => $c, line => $line };
         $keep_seq->();
@@ -758,10 +759,17 @@ sub rewrite_file {
     my $type = $e->{type};
     if (my $render = main->can("render_$type")) {    ## Easy object-type-specific renders :)
       $cnt .= $render->($e, $obj, $db);
+      next;
     }
-    else {
-      trace("render not found for object $type");
+    
+    my $r_obj = $db->{objs}{$e->{uid}};
+    if (my $url = $r_obj->{url}) {
+      my ($frag) = $url =~ m/#([^#]+)$/;
+      $cnt .= "\n<a name=\"$frag\">\n";
+      next;
     }
+    
+    trace("render not found for object $type");
   }
 
   ## gloabal cleanups
