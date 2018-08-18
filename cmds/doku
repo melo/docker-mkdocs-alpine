@@ -765,8 +765,7 @@ sub rewrite_file {
     my $r_obj = $db->{objs}{$e->{uid}};
     if (my $url = $r_obj->{url}) {
       my ($frag) = $url =~ m/#([^#]+)$/;
-      $cnt .= "\n<a name=\"$frag\">\n";
-      next;
+      $cnt .= "\n<div style=\"display: none;\" id=\"$frag\"></div>\n" if $frag;
     }
     
     trace("render not found for object $type");
