@@ -175,7 +175,7 @@ sub output_files {
 
     ## Update the index entry
     $descr = ": $descr" if $descr;
-    $idx .= "* [$c_name]($f_name)$descr\n";
+    $idx .= "* [$f_name]($c_name)$descr\n";
 
     print "+++ generated $c_name from $f_name\n";
   }
