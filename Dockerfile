@@ -1,10 +1,9 @@
 FROM alpine
-
-RUN apk add --no-cache               \
-      curl wget make git             \
-      python py2-pip                 \
-      nodejs yarn                    \
-      nginx                          \
+RUN apk add --no-cache                                                            \
+      build-base curl wget make git                                               \
+      python3 python3-dev                                                         \
+      nodejs yarn                                                                 \
+      nginx                                                                       \
       perl perl-path-tiny perl-yaml-libyaml perl-getopt-long
 
 ## Add the MermaidJS utility
@@ -16,7 +15,7 @@ RUN curl -L https://cpanmin.us | perl - App::cpanminus  \
  && rm -rf "$HOME/.cpanm"
 
 ## Install the mkdocs system
-RUN pip install mkdocs pygments                                                   \
+RUN pip3 install mkdocs pygments                                                  \
     mkdocs-alabaster mkdocs-bootstrap mkdocs-cinder mkdocs-material mkdocs-nature \
     mkdocs-rtd-dropdown                                                           \
     mkdocs-safe-text-plugin                                                       \
