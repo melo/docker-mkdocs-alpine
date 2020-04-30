@@ -206,6 +206,7 @@ sub update_wiki {
 
     ## See if we can pick up a description
     my ($descr) = $e->{markdown} =~ m/^#\s*(.*?)\s*#?$/gsm;
+    $descr ||= $name;
 
     ## Write the md file
     $path->child("$name.md")->spew($e->{markdown});
