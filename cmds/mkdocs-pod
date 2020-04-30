@@ -160,9 +160,9 @@ sub update_wiki {
     ## Update the index entry
     my $p = $idx;
     for my $e (@c) {
-      $p = $p->{$e} ||= {};
+      $p = $p->{t}{$e} ||= {};
     }
-    $p->{$mod} = [join('/', $base, @c, "$bn.md"), $e];
+    $p->{f}{$mod} = [join('/', $base, @c, "$bn.md"), $e];
   }
 
   $idx = _sort_idx($idx);
@@ -189,12 +189,12 @@ sub _sort_idx {
   my @sorted;
   for my $k (sort keys %$idx) {
     my $v = $idx->{$k};
-    if (ref($v) eq 'ARRAY') {    ## final value
-      push @sorted, { $v->[1]{mod} => $v->[0] };
+    if (exists $v->{f}) {
+      for my $f (sort keys %{$v->{f}}) {
+        push @sorted, { $f->[1]{mod} => $f->[0] };
+      }
     }
-    elsif (ref($v) eq 'HASH') {    ## nested...
-      push @sorted, { $k => _sort_idx($v) };
-    }
+    push @sorted, { $k => _sort_idx($v->{t}) } if exists $v->{t};
   }
 
   return \@sorted;
