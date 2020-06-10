@@ -1,7 +1,7 @@
 FROM alpine
 RUN apk add --no-cache                                                            \
       build-base curl wget make git                                               \
-      python3 python3-dev                                                         \
+      python3 python3-dev py3-pip                                                 \
       nodejs yarn                                                                 \
       nginx                                                                       \
       perl perl-path-tiny perl-yaml-libyaml perl-getopt-long perl-app-cpanminus
