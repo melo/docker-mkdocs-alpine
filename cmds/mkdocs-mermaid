@@ -53,6 +53,6 @@ sub replace_mermaid_fenced_block_with_html {
   ## Enable the JS lib on this document
   $_
     .= "\n\n"
-    . qq{<script src="https://unpkg.com/browse/mermaid\@8.5.2/dist/mermaid.min.js"></script>\n}
+    . qq{<script src="https://unpkg.com/mermaid\@8.5.2/dist/mermaid.min.js"></script>\n}
     . qq{<script>mermaid.initialize({startOnLoad:true});</script>\n};
 }
