@@ -18,6 +18,13 @@
 # And if a mermaid block is found, it will add the MermaidJS lib at the bottom,
 # and start it up.
 #
+# The filter is a two part:
+#
+#  * the first run is over the markdown files to convert the fenced blocks
+#    to HTML;
+#  * the second is should be run over the HTML files to make sure we load the
+#    required JS files.
+#
 
 use 5.022;
 use warnings;
@@ -29,7 +36,13 @@ sub usage {
   die <<EOU;
 Usage: mkdocs-mermaid [<options>] <dir>...
 
-Parses <dir> for Markdown and/or HTML files
+Parses <dir> for Markdown and/or HTML files to support MermaidJS
+fenced blocks in the final site.
+
+Requires two passes, the first one with --markdown to deal with the
+fenced blocks, and the second with --html to load the required
+JS libs.
+
 EOU
 }
 
